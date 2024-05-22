@@ -77,8 +77,6 @@ export default function Dashboard() {
         url: '/statistical/overview',
       });
 
-      console.log(loaded);
-
       // Fetch
       const sac = await fetcher({
         method: 'GET',

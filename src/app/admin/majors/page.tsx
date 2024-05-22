@@ -276,7 +276,7 @@ const UpdateForm: FC<UpdateFormType> = ({
                   <Select onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={row.original.faculty_name} />
+                        <SelectValue placeholder={row.original?.faculty?.name} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -813,7 +813,7 @@ export default function Majors() {
           </Button>
         );
       },
-      cell: ({ row }) => <div className="">{row.getValue('faculty_name')}</div>,
+      cell: ({ row }) => <div className="">{row.original.faculty?.name}</div>,
     },
     {
       accessorKey: 'name',

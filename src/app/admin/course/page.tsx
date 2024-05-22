@@ -511,6 +511,7 @@ export default function Course() {
     defaultValues: {
       name: '',
       desc: '',
+      is_graduate: false,
     },
   });
 

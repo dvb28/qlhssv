@@ -3,8 +3,9 @@ export interface StudentsPapersAndCertificate {
      name: string;
      is_submit: boolean;
      give_back: boolean;
-     submit_note: any;
-     give_back_note: any;
+     submit_note: string;
+     file: string;
+     give_back_note: string;
      give_back_date: any;
      submit_date: any;
      created_at: Date;

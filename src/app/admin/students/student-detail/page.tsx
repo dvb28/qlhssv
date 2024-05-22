@@ -334,16 +334,13 @@ const spacSchema = z.object({
     .min(1, {
       message: 'Tên giấy giờ, chứng chỉ không được trống.',
     }),
-  is_submit: z.boolean({
-    required_error: 'Trường này không được trống',
-  }),
   give_back: z.boolean({
     required_error: 'Trường này không được trống',
   }),
+  file: z.instanceof(FileList).optional(),
   submit_note: z.any(),
   give_back_note: z.any(),
   give_back_date: z.any(),
-  submit_date: z.any(),
 });
 
 export default function StudentDetailWrapper() {
@@ -368,6 +365,7 @@ export default function StudentDetailWrapper() {
       // Check majors select success
       studentFetch?.ok && S(studentFetch?.data);
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Return
@@ -389,14 +387,31 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
     resolver: zodResolver(spacSchema),
     defaultValues: {
       name: row.getValue('name'),
-      is_submit: row.getValue('is_submit'),
       give_back: row.getValue('give_back'),
-      submit_note: row.getValue('submit_note'),
-      give_back_note: row.getValue('give_back_note'),
-      give_back_date: row.getValue('give_back_date'),
-      submit_date: row.getValue('submit_date'),
+      submit_note: row.original?.submit_note ?? '',
+      give_back_note: row.original?.give_back_note ?? '',
+      give_back_date: row.original?.give_back_date ?? '',
     },
   });
+
+  // File ref
+  const fileRef = formUpdate.register('file');
+
+  // Fetch Update
+  const fetchUpdate = async (values: z.infer<typeof spacSchema>) => {
+    // Fetch
+    const updated = await fetcher({
+      method: 'PUT',
+      url: '/student-papers-and-ceritificate/update',
+      payload: {
+        id: row.original.id,
+        ...values,
+      },
+    });
+
+    // Return
+    return updated;
+  };
 
   // Update
   function onUpdate(values: z.infer<typeof spacSchema>) {
@@ -407,18 +422,49 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
     const promise = (): Promise<StudentsPapersAndCertificate> =>
       new Promise(async (resolve, reject) =>
         setTimeout(async () => {
-          // Fetch
-          const created = await fetcher({
-            method: 'PUT',
-            url: '/student-papers-and-ceritificate/update',
-            payload: {
-              id: row.original.id,
-              ...values,
-            },
-          });
+          // Check file
+          if (values?.file && values?.file?.length > 0) {
+            // Form data
+            const formData = new FormData();
 
-          // Check request
-          created?.ok ? resolve(created?.data) : reject(created?.message);
+            // Append file
+            formData.append('files', values.file[0]);
+
+            // Append id
+            formData.append('student_id', values.id);
+
+            // Fetch upload
+            const upload = await fetcher({
+              method: 'UPLOAD',
+              url: '/student-papers-and-ceritificate/upload',
+              payload: formData,
+            });
+
+            // Check upload
+            if (upload?.ok) {
+              // Fetch
+              const updatedWithFile = await fetchUpdate({
+                ...values,
+                file: upload.data.filename,
+              });
+
+              // Check request
+              updatedWithFile?.ok
+                ? resolve(updatedWithFile?.data)
+                : reject(updatedWithFile?.message);
+            } else {
+              // Reject
+              reject(upload?.message);
+            }
+          } else {
+            // Fetch
+            const updatedNoFile = await fetchUpdate(values);
+
+            // Check request
+            updatedNoFile?.ok
+              ? resolve(updatedNoFile?.data)
+              : reject(updatedNoFile?.message);
+          }
         }, 1000),
       );
 
@@ -530,49 +576,6 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
               <div className="grid">
                 <FormField
                   control={formUpdate.control}
-                  name="submit_date"
-                  render={({ field }) => (
-                    <FormItem className="grid">
-                      <FormLabel>Ngày nộp</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={'outline'}
-                              className={cn(
-                                'w-full pl-3 text-left font-normal',
-                                !field.value && 'text-muted-foreground',
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, 'dd/MM/yyyy')
-                              ) : (
-                                <span>Chọn ngày nộp</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date('1900-01-01')
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid">
-                <FormField
-                  control={formUpdate.control}
                   name="give_back_date"
                   render={({ field }) => (
                     <FormItem className="grid">
@@ -613,43 +616,43 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
                   )}
                 />
               </div>
-              <div className="flex gap-5 justify-start">
-                <div className="flex">
-                  <FormField
-                    control={formUpdate.control}
-                    name="is_submit"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center space-y-0 gap-3">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormLabel>Đã nộp</FormLabel>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="flex">
-                  <FormField
-                    control={formUpdate.control}
-                    name="give_back"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center space-y-0 gap-3">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormLabel>Đã trả lại</FormLabel>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+              <div className="grid">
+                <FormField
+                  control={formUpdate.control}
+                  name="file"
+                  render={({ field }) => (
+                    <FormItem className="grid">
+                      <FormLabel htmlFor="text">Chọn file PDF</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="file"
+                          accept="application/pdf"
+                          placeholder="Chọn file PDF"
+                          {...fileRef}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex">
+                <FormField
+                  control={formUpdate.control}
+                  name="give_back"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-y-0 gap-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel>Đã trả lại</FormLabel>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -709,12 +712,12 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
   // Table Selection
   const [rowSelection, setRowSelection] = useState({});
 
-  const handleDelete = async (ids: string[]) => {
+  const handleDelete = async (ids: string[], files?: string[]) => {
     // Fetch
     const fetch = await fetcher({
       method: 'DELETE',
       url: `/student-papers-and-ceritificate/delete`,
-      payload: { ids },
+      payload: { ids, files },
     });
 
     // Check success
@@ -729,7 +732,10 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       return new Promise(async (resolve, reject) =>
         setTimeout(async () => {
           // Deleting
-          const deleted = await handleDelete([row.original.id]);
+          const deleted = await handleDelete(
+            [row.original.id],
+            [row.original.file],
+          );
 
           // Resolve
           deleted ? resolve(deleted) : reject(deleted);
@@ -765,6 +771,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
     // Stop Event
     e.preventDefault();
 
+    // Files
+    const files = rows.map((row) => row.original.file);
+
     // Get deletes
     const deletes = rows.map((row) => row.original.id);
 
@@ -774,7 +783,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       return new Promise(async (resolve, reject) =>
         setTimeout(async () => {
           // Deleting
-          const deleted = await handleDelete(deletes);
+          const deleted = await handleDelete(deletes, files);
 
           // Resolve
           deleted ? resolve(deleted) : reject(deleted);
@@ -876,29 +885,6 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       cell: ({ row }) => <Checkbox checked={row.getValue('give_back')} />,
     },
     {
-      accessorKey: 'give_back_date',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Ngày trả
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        // Date
-        const date: string = row.getValue('give_back_date');
-
-        // Return
-        return (
-          <div className="text-left">
-            {date ? format(date, 'dd/MM/yyyy') : ''}
-          </div>
-        );
-      },
-    },
-    {
       accessorKey: 'submit_date',
       header: ({ column }) => (
         <Button
@@ -912,6 +898,29 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       cell: ({ row }) => {
         // Date
         const date: string = row.getValue('submit_date');
+
+        // Return
+        return (
+          <div className="text-left">
+            {date ? format(date, 'dd/MM/yyyy') : ''}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'give_back_date',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Ngày trả
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        // Date
+        const date: string = row.getValue('give_back_date');
 
         // Return
         return (
@@ -1019,6 +1028,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                 <DropdownMenuItem onClick={() => deleteSpac(row)}>
                   Xoá
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => deleteSpac(row)}>
+                  Xem
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1106,10 +1118,12 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
     resolver: zodResolver(spacSchema),
     defaultValues: {
       name: '',
-      is_submit: false,
       give_back: false,
     },
   });
+
+  // File ref
+  const fileRef = spacForm.register('file');
 
   // Number input change
   const numberInputChange = (
@@ -1154,7 +1168,6 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       const { data, ...pageConfig } = fetch.data;
 
       // Set data to students
-      console.log(data);
       setSpac(data);
 
       // Set page config
@@ -1208,23 +1221,70 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
     });
   }
 
+  // Fetch Update
+  const fetchInsertSpac = async (values: z.infer<typeof spacSchema>) => {
+    // Fetch
+    const created = await fetcher({
+      method: 'POST',
+      url: '/student-papers-and-ceritificate/create',
+      payload: {
+        ...values,
+        student_id: studentData.id,
+      },
+    });
+
+    // Return
+    return created;
+  };
+
   function onInsertSpac(values: z.infer<typeof spacSchema>) {
     // Promise
     const promise = (): Promise<StudentsPapersAndCertificate> =>
       new Promise(async (resolve, reject) =>
         setTimeout(async () => {
-          // Resolve
-          const created = await fetcher({
-            method: 'POST',
-            url: '/student-papers-and-ceritificate/create',
-            payload: {
-              ...values,
-              student_id: studentData.id,
-            },
-          });
+          // Check file
+          if (values?.file && values?.file?.length > 0) {
+            // Form data
+            const formData = new FormData();
 
-          // Check success and resolve
-          created?.ok ? resolve(created?.data) : reject(created?.message);
+            // Append file
+            formData.append('files', values.file[0]);
+
+            // Append id
+            formData.append('student_id', studentData.id);
+
+            // Fetch upload
+            const upload = await fetcher({
+              method: 'UPLOAD',
+              url: '/student-papers-and-ceritificate/upload',
+              payload: formData,
+            });
+
+            // Check upload
+            if (upload?.ok) {
+              // Fetch
+              const createdWithFile = await fetchInsertSpac({
+                ...values,
+                file: upload.data.filename,
+              });
+
+              // Check request
+              createdWithFile?.ok
+                ? resolve(createdWithFile?.data)
+                : reject(createdWithFile?.message);
+            } else {
+              // Reject
+              reject(upload?.message);
+            }
+          } else {
+            // Fetch
+            const createdNoFile = await fetchInsertSpac(values);
+
+            // Check request
+            createdNoFile?.ok
+              ? resolve(createdNoFile?.data)
+              : reject(createdNoFile?.message);
+          }
         }, 1000),
       );
 
@@ -1248,6 +1308,10 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
         return 'Thêm giấy tờ sinh viên thành công';
       },
       error: (message: string) => `${message}`,
+      finally: () => {
+        // Reset form value
+        spacForm.reset();
+      },
     });
   }
 
@@ -2485,57 +2549,6 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                               <div className="grid">
                                 <FormField
                                   control={spacForm.control}
-                                  name="submit_date"
-                                  render={({ field }) => (
-                                    <FormItem className="grid">
-                                      <FormLabel>Ngày nộp</FormLabel>
-                                      <Popover>
-                                        <PopoverTrigger asChild>
-                                          <FormControl>
-                                            <Button
-                                              variant={'outline'}
-                                              className={cn(
-                                                'w-full pl-3 text-left font-normal',
-                                                !field.value &&
-                                                  'text-muted-foreground',
-                                              )}
-                                            >
-                                              {field.value ? (
-                                                format(
-                                                  field.value,
-                                                  'dd/MM/yyyy',
-                                                )
-                                              ) : (
-                                                <span>Chọn ngày nộp</span>
-                                              )}
-                                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                          </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent
-                                          className="w-auto p-0"
-                                          align="start"
-                                        >
-                                          <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            disabled={(date) =>
-                                              date > new Date() ||
-                                              date < new Date('1900-01-01')
-                                            }
-                                            initialFocus
-                                          />
-                                        </PopoverContent>
-                                      </Popover>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <div className="grid">
-                                <FormField
-                                  control={spacForm.control}
                                   name="give_back_date"
                                   render={({ field }) => (
                                     <FormItem className="grid">
@@ -2584,43 +2597,45 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   )}
                                 />
                               </div>
-                              <div className="flex gap-5 justify-start">
-                                <div className="flex">
-                                  <FormField
-                                    control={spacForm.control}
-                                    name="is_submit"
-                                    render={({ field }) => (
-                                      <FormItem className="flex items-center space-y-0 gap-3">
-                                        <FormControl>
-                                          <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                          />
-                                        </FormControl>
-                                        <FormLabel>Đã nộp</FormLabel>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
-                                <div className="flex">
-                                  <FormField
-                                    control={spacForm.control}
-                                    name="give_back"
-                                    render={({ field }) => (
-                                      <FormItem className="flex items-center space-y-0 gap-3">
-                                        <FormControl>
-                                          <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                          />
-                                        </FormControl>
-                                        <FormLabel>Đã trả lại</FormLabel>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                </div>
+                              <div className="grid">
+                                <FormField
+                                  control={spacForm.control}
+                                  name="file"
+                                  render={({ field }) => (
+                                    <FormItem className="grid">
+                                      <FormLabel htmlFor="text">
+                                        Chọn file PDF
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="file"
+                                          accept="application/pdf"
+                                          placeholder="Chọn file PDF"
+                                          {...fileRef}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              <div className="flex">
+                                <FormField
+                                  control={spacForm.control}
+                                  name="give_back"
+                                  render={({ field }) => (
+                                    <FormItem className="flex items-center space-y-0 gap-3">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
+                                      </FormControl>
+                                      <FormLabel>Đã trả lại</FormLabel>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
                               </div>
                             </div>
                             <DialogFooter>

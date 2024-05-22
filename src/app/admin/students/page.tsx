@@ -120,7 +120,6 @@ const IdToColumn = (key: string) => {
   }
 };
 
-
 export default function Students() {
   // Page
   const [page, setPage] = useState<number>(1);
@@ -130,6 +129,9 @@ export default function Students() {
 
   // Dialog Open
   const [deleteRowDilog, setDeleteRowDilog] = useState<boolean>(false);
+
+  // Handled
+  const [handled, setHandled] = useState<any>();
 
   // Dialog Open
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -159,6 +161,9 @@ export default function Students() {
       url: `/students/delete`,
       payload: { ids },
     });
+
+    // Check request
+    fetch?.ok && setHandled(['DELETE', ids.length > 1 ? 1 : 0, ids]);
 
     // Check success
     return fetch?.ok;
@@ -353,7 +358,13 @@ export default function Students() {
           </Button>
         );
       },
-      cell: ({ row }) => <div className="">{row.original.mmr.name}</div>,
+      cell: ({ row }) => (
+        <div className="">
+          {row.original.mmr?.name ?? (
+            <p className="text-red-500 font-medium">Chưa có chuyên ngành</p>
+          )}
+        </div>
+      ),
     },
     {
       accessorKey: 'classes.name',
@@ -369,7 +380,7 @@ export default function Students() {
         );
       },
       cell: ({ row }) => (
-        <div className="text-nowrap">{row.original.classes.name}</div>
+        <div className="text-nowrap">{row.original.classes?.name}</div>
       ),
     },
     {
@@ -799,6 +810,15 @@ export default function Students() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <TableSearch
+              columns={columns}
+              title="Tìm kiếm ngành"
+              handled={handled}
+              setHandled={setHandled}
+              IdToColumn={IdToColumn}
+              source={'students'}
+              searchFields={['fullname']}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 gap-1">

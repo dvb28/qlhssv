@@ -269,6 +269,13 @@ export default function StudentAdd() {
         return 'Tạo hồ sơ sinh viên thành công';
       },
       error: (message: string) => `${message}`,
+      finally: () => {
+        // Reset form value
+        studentInfoForm.reset();
+
+        // Routing
+        navigate?.push('/admin/students');
+      }
     });
   }
 
