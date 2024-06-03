@@ -33,6 +33,8 @@ import { Response } from '@/common/types/response.type';
 import { fetcher } from '@/common/utils/fetcher';
 import { GenderEnum } from '@/common/enum/gender.enum';
 import { useRouter } from 'next-nprogress-bar';
+import Image from 'next/image';
+import { errors } from '@/common/utils/ultils';
 
 // Form Schema
 const formSchema = z
@@ -51,9 +53,13 @@ const formSchema = z
       .min(8, {
         message: 'Mật khẩu phải trên 8 ký tự.',
       }),
-    confirm: z.string().min(8, {
-      message: 'Mật khẩu phải trên 8 ký tự.',
-    }),
+    confirm: z
+      .string({
+        required_error: 'Trường này không được trống.',
+      })
+      .min(8, {
+        message: 'Mật khẩu phải trên 8 ký tự.',
+      }),
     fullname: z.string().min(10, {
       message: 'Họ và tên phải tên trên 10 ký tự.',
     }),
@@ -123,17 +129,22 @@ export default function Register() {
         // Show message
         return 'Đăng ký tài khoản thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   }
 
   // Return
   return (
-    <div className="flex items-center min-h-screen justify-center p-9">
+    <div className="flex items-center min-h-screen justify-center p-9 flex-col">
+      <div className="mb-8 flex justify-center">
+        <Image src="/images/logo.png" alt="Logo" width={300} height={300} />
+      </div>
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle className="text-xl">Đăng ký</CardTitle>
-          <CardDescription>Nhập email và tài khoản để đăng ký.</CardDescription>
+          <CardTitle className="text-2xl">Hệ thống quản lý sinh viên</CardTitle>
+          <CardDescription>
+            Đăng ký vào hệ thống quản lý sinh viên.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -250,7 +261,7 @@ export default function Register() {
           <div className="mt-4 text-center text-sm">
             Bạn đã có tài khoản?{' '}
             <Link href="/auth/login" className="underline">
-              Đăng ký
+              Đăng nhập
             </Link>
           </div>
         </CardContent>

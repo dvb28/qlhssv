@@ -88,7 +88,7 @@ import { StudyStateEnum } from '@/common/enum/study.state.enum';
 import { HDTEnum } from '@/common/enum/hdt.enum';
 import { RankEnum } from '@/common/enum/rank.enum';
 import Majors from '@/common/interface/Majors';
-import { fetcher } from '@/common/utils/fetcher';
+import { BASE_URL, fetcher } from '@/common/utils/fetcher';
 import Class from '@/common/interface/Class';
 import { useRouter } from 'next-nprogress-bar';
 import { useSearchParams } from 'next/navigation';
@@ -127,8 +127,9 @@ import {
   PaginationItem,
   PaginationLink,
 } from '@/components/ui/pagination';
-import { getCommonPinningStyles } from '@/common/utils/ultils';
+import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
 import { PageConfig } from '@/common/types/page.config.type';
+import Link from 'next/link';
 
 // Form Student Info Schema
 const studentInfoSchema = z.object({
@@ -149,7 +150,8 @@ const studentInfoSchema = z.object({
     })
     .min(1, {
       message: 'Nếu không có tôn giáo hãy nhập "Không".',
-    }),
+    })
+    .optional(),
   fullname: z
     .string({
       required_error: 'Trường này không được trống.',
@@ -162,40 +164,10 @@ const studentInfoSchema = z.object({
     .string({
       required_error: 'Trường này không được trống.',
     })
-    .length(10, {
-      message: 'Định dạng số điện thoại không đúng.',
-    }),
-  nationality: z.enum(
-    [
-      NationEnum.VIETNAM,
-      NationEnum.KOREA,
-      NationEnum.JAPAN,
-      NationEnum.CHINA,
-      NationEnum.TAIWAN,
-      NationEnum.THAILAND,
-      NationEnum.TURKEY,
-      NationEnum.OTHER,
-    ],
-    {
-      required_error: 'Trường này không được trống.',
-    },
-  ),
-  nation: z.enum(
-    [
-      NationEnum.VIETNAM,
-      NationEnum.KOREA,
-      NationEnum.JAPAN,
-      NationEnum.CHINA,
-      NationEnum.TAIWAN,
-      NationEnum.THAILAND,
-      NationEnum.TURKEY,
-      NationEnum.OTHER,
-    ],
-    {
-      required_error: 'Trường này không được trống.',
-    },
-  ),
-  date_of_birth: z.date({
+    .optional(),
+  nationality: z.string().optional(),
+  nation: z.string().optional(),
+  date_of_birth: z.string({
     required_error: 'Trường này không được trống.',
   }),
   cccd: z
@@ -206,7 +178,12 @@ const studentInfoSchema = z.object({
       message: 'Căn cước công dân phải có đúng 12 số.',
     }),
   state: z.enum(
-    [StudyStateEnum.ACCEPTED, StudyStateEnum.PENDING, StudyStateEnum.REJECTED],
+    [
+      StudyStateEnum.ACCEPTED,
+      StudyStateEnum.PENDING,
+      StudyStateEnum.REJECTED,
+      StudyStateEnum.NOTYET,
+    ],
     {
       required_error: 'Trường này không được trống.',
     },
@@ -218,25 +195,35 @@ const studentInfoSchema = z.object({
     required_error: 'Trường này không được trống.',
   }),
   extra_majors: z.string().optional(),
-  class_id: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
+  class_id: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
   father_name: z.string().optional(),
   mother_name: z.string().optional(),
   mother_date_of_birth: z.any(),
   father_date_of_birth: z.any(),
-  sbd: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
-  block: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
-  admissions_industry: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
-  area: z.number({
-    required_error: 'Trường này không được trống.',
-  }),
+  sbd: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
+  block: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
+  admissions_industry: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
+  area: z
+    .number({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
   suj_score_1: z
     .number({
       required_error: 'Trường này không được trống.',
@@ -281,25 +268,10 @@ const studentInfoSchema = z.object({
   count: z.number({
     required_error: 'Trường này không được trống.',
   }),
-  study_rank: z.enum([RankEnum.TOT, RankEnum.KEM, RankEnum.KHA], {
-    required_error: 'Trường này không được trống.',
-  }),
-  morality_rank: z.enum([RankEnum.TOT, RankEnum.KEM, RankEnum.KHA], {
-    required_error: 'Trường này không được trống.',
-  }),
-  graduate_rank: z.enum([RankEnum.TOT, RankEnum.KEM, RankEnum.KHA], {
-    required_error: 'Trường này không được trống.',
-  }),
-  graduate_year: z
-    .number({
-      required_error: 'Trường này không được trống.',
-    })
-    .min(1900, {
-      message: 'Định dạng năm không đúng.',
-    })
-    .max(new Date().getFullYear(), {
-      message: 'Định dạng năm không đúng.',
-    }),
+  study_rank: z.string().optional(),
+  morality_rank: z.string().optional(),
+  graduate_rank: z.string().optional(),
+  graduate_year: z.string().optional(),
 });
 
 const IdToColumn = (key: string) => {
@@ -343,6 +315,11 @@ const spacSchema = z.object({
   give_back_date: z.any(),
 });
 
+// Multiple spac
+const mulSpacSchema = z.object({
+  files: z.instanceof(FileList),
+});
+
 export default function StudentDetailWrapper() {
   // Search Params
   const searchParams = useSearchParams();
@@ -365,7 +342,7 @@ export default function StudentDetailWrapper() {
       // Check majors select success
       studentFetch?.ok && S(studentFetch?.data);
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Return
@@ -373,6 +350,7 @@ export default function StudentDetailWrapper() {
 }
 
 type UpdateFormType = {
+  studentData: Students;
   row: Row<StudentsPapersAndCertificate>;
   spac: StudentsPapersAndCertificate[];
   setSpac: React.Dispatch<React.SetStateAction<StudentsPapersAndCertificate[]>>;
@@ -430,9 +408,6 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
             // Append file
             formData.append('files', values.file[0]);
 
-            // Append id
-            formData.append('student_id', values.id);
-
             // Fetch upload
             const upload = await fetcher({
               method: 'UPLOAD',
@@ -489,7 +464,7 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
         // Show message
         return 'Cập nhật thông tin khoa thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         formUpdate.reset();
@@ -685,6 +660,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
   // Page
   const [page, setPage] = useState<number>(1);
 
+  // Open mul spac
+  const [openMulSpac, setOpenMulSpac] = useState<boolean>(false);
+
   // Dialog Open
   const [deleteRowDilog, setDeleteRowDilog] = useState<boolean>(false);
 
@@ -748,7 +726,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       loading: `Đang xóa giấy tờ ${row.original.name}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
-        if (spac.length === 1) {
+        if (spac.length === 1 && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -759,7 +737,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
         // Show message
         return `Xóa giấy tờ ${row.original.name} thành công`;
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -810,7 +788,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
         // Show message
         return 'Xóa các giấy tờ đã chọn thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -1024,13 +1002,18 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                <UpdateForm row={row} spac={spac} setSpac={setSpac} />
+                <UpdateForm
+                  row={row}
+                  spac={spac}
+                  setSpac={setSpac}
+                  studentData={studentData}
+                />
                 <DropdownMenuItem onClick={() => deleteSpac(row)}>
                   Xoá
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => deleteSpac(row)}>
-                  Xem
-                </DropdownMenuItem>
+                <Link target="_blank" href={`${BASE_URL}/${row.original.file}`}>
+                  <DropdownMenuItem>Xem</DropdownMenuItem>
+                </Link>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1067,43 +1050,39 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
   const studentInfoForm = useForm<z.infer<typeof studentInfoSchema>>({
     resolver: zodResolver(studentInfoSchema),
     defaultValues: {
-      fullname: studentData.fullname,
-      email: studentData.email,
-      class_id: studentData.class_id,
-      date_of_birth: new Date(studentData.date_of_birth),
-      gender: studentData.gender as GenderEnum,
-      nationality: studentData.nationality as NationEnum,
-      nation: studentData.nation as NationEnum,
-      religion: studentData.religion,
-      home_town: studentData.home_town,
-      place_of_birth: studentData.place_of_birth,
-      cccd: studentData.cccd,
+      fullname: studentData.fullname ?? '',
+      email: studentData.email ?? '',
+      class_id: studentData?.class_id ?? '',
+      date_of_birth: studentData.date_of_birth ?? '',
+      gender: (studentData.gender as GenderEnum) ?? '',
+      nationality: (studentData?.nationality as NationEnum) ?? '',
+      nation: (studentData?.nation as NationEnum) ?? '',
+      religion: studentData.religion ?? '',
+      home_town: studentData.home_town ?? '',
+      place_of_birth: studentData.place_of_birth ?? '',
+      cccd: studentData.cccd ?? '',
       father_name: studentData?.father_name ?? '',
       mother_name: studentData?.mother_name ?? '',
-      father_date_of_birth: studentData.father_date_of_birth
-        ? new Date(studentData.father_date_of_birth)
-        : null,
-      mother_date_of_birth: studentData.mother_date_of_birth
-        ? new Date(studentData.mother_date_of_birth)
-        : null,
-      sbd: studentData.sbd,
-      block: studentData.block,
-      admissions_industry: studentData.admissions_industry,
-      phone: studentData.phone ?? null,
-      state: studentData.state as StudyStateEnum,
-      hdt: studentData.hdt as HDTEnum,
-      main_majors: studentData.main_majors,
-      study_rank: studentData.study_rank as RankEnum,
-      morality_rank: studentData.morality_rank as RankEnum,
-      graduate_rank: studentData.graduate_rank as RankEnum,
-      graduate_year: parseInt(studentData.graduate_year),
-      suj_score_1: parseFloat(studentData.suj_score_1),
-      suj_score_2: parseFloat(studentData.suj_score_2),
-      suj_score_3: parseFloat(studentData.suj_score_3),
-      plus_score: parseFloat(studentData.plus_score),
-      total_score: parseFloat(studentData.total_score),
-      area: parseInt(studentData.area),
-      count: parseInt(studentData.count),
+      father_date_of_birth: studentData.father_date_of_birth ?? '',
+      mother_date_of_birth: studentData.mother_date_of_birth ?? '',
+      sbd: studentData.sbd ?? '',
+      block: studentData.block ?? '',
+      admissions_industry: studentData.admissions_industry ?? '',
+      phone: studentData.phone ?? '',
+      state: (studentData.state as StudyStateEnum) ?? '',
+      hdt: (studentData.hdt as HDTEnum) ?? '',
+      main_majors: studentData.main_majors ?? '',
+      study_rank: (studentData.study_rank as RankEnum) ?? '',
+      morality_rank: (studentData?.morality_rank as RankEnum) ?? '',
+      graduate_rank: (studentData.graduate_rank as RankEnum) ?? '',
+      graduate_year: studentData.graduate_year ?? '',
+      suj_score_1: parseFloat(studentData.suj_score_1) ?? '',
+      suj_score_2: parseFloat(studentData.suj_score_2) ?? '',
+      suj_score_3: parseFloat(studentData.suj_score_3) ?? '',
+      plus_score: parseFloat(studentData.plus_score) ?? '',
+      total_score: parseFloat(studentData.total_score) ?? '',
+      area: parseInt(studentData.area) ?? '',
+      count: parseInt(studentData.count) ?? '',
     },
   });
 
@@ -1122,8 +1101,16 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
     },
   });
 
+  // 1. Define your spacForm.
+  const mulSpacForm = useForm<z.infer<typeof mulSpacSchema>>({
+    resolver: zodResolver(mulSpacSchema),
+  });
+
   // File ref
   const fileRef = spacForm.register('file');
+
+  // File ref
+  const filesRef = mulSpacForm.register('files');
 
   // Number input change
   const numberInputChange = (
@@ -1191,6 +1178,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
   };
 
   function onSubmit(values: z.infer<typeof studentInfoSchema>) {
+    // Enable loading
+    setIsLoading(true);
+
     // Promise
     const promise = () =>
       new Promise(async (resolve, reject) =>
@@ -1202,6 +1192,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
             payload: {
               ...values,
               id: studentData.id,
+              date_of_birth: values.date_of_birth,
+              father_date_of_birth: values?.father_date_of_birth,
+              mother_date_of_birth: values?.father_date_of_birth,
             },
           });
 
@@ -1217,7 +1210,11 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
         // Show message
         return 'Cập nhật hồ sơ sinh viên thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
+      finally: () => {
+        // Disable loading
+        setIsLoading(false);
+      },
     });
   }
 
@@ -1237,6 +1234,41 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
     return created;
   };
 
+  // Fetch Update
+  const fetchInsertMulSpac = async (files: any) => {
+    // Insert certificate
+    const inserts = files.map((file: any) => {
+      // Filename
+      const fileName = file?.filename;
+
+      // Last dot index
+      const dotIndex = fileName.lastIndexOf('.');
+
+      // Hyphen index
+      const hyphenIndex = fileName.indexOf('-', 1);
+
+      // Return
+      return {
+        file: `files/spac/${fileName}`,
+        is_submit: true,
+        give_back: false,
+        submit_date: new Date(),
+        student_id: studentData.id,
+        name: fileName.substring(hyphenIndex + 1, dotIndex),
+      };
+    });
+
+    // Fetch
+    const created = await fetcher({
+      method: 'POST',
+      url: '/student-papers-and-ceritificate/multiple-create',
+      payload: inserts,
+    });
+
+    // Return
+    return created;
+  };
+
   function onInsertSpac(values: z.infer<typeof spacSchema>) {
     // Promise
     const promise = (): Promise<StudentsPapersAndCertificate> =>
@@ -1250,9 +1282,6 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
             // Append file
             formData.append('files', values.file[0]);
 
-            // Append id
-            formData.append('student_id', studentData.id);
-
             // Fetch upload
             const upload = await fetcher({
               method: 'UPLOAD',
@@ -1265,7 +1294,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
               // Fetch
               const createdWithFile = await fetchInsertSpac({
                 ...values,
-                file: upload.data.filename,
+                file: upload.data?.[0].filename,
               });
 
               // Check request
@@ -1307,10 +1336,68 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
         // Show message
         return 'Thêm giấy tờ sinh viên thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         spacForm.reset();
+      },
+    });
+  }
+
+  function onInsertMulSpac(values: z.infer<typeof mulSpacSchema>) {
+    // Promise
+    const promise = (): Promise<StudentsPapersAndCertificate[]> =>
+      new Promise(async (resolve, reject) =>
+        setTimeout(async () => {
+          // Check file
+          if (values?.files && values?.files?.length > 0) {
+            // Form data
+            const formData = new FormData();
+
+            // Append file
+            for (let i = 0; i < values?.files?.length; i++) {
+              formData.append('files', values?.files[i]);
+            }
+
+            // Fetch upload
+            const upload = await fetcher({
+              method: 'UPLOAD',
+              url: '/student-papers-and-ceritificate/upload',
+              payload: formData,
+            });
+
+            // Check upload
+            if (upload?.ok) {
+              // Fetch
+              const created = await fetchInsertMulSpac(upload.data);
+
+              // Check request
+              created?.ok ? resolve(created?.data) : reject(created?.message);
+            } else {
+              // Reject
+              reject(upload?.message);
+            }
+          }
+        }, 1000),
+      );
+
+    // Toast
+    toast.promise(promise, {
+      loading: 'Đang thêm giấy tờ sinh viên, vui lòng đợi...',
+      success: () => {
+        // Close dialog
+        setOpenMulSpac(false);
+
+        // Add page
+        setIsPageChange((prev) => !prev);
+
+        // Show message
+        return 'Thêm giấy tờ sinh viên thành công';
+      },
+      error: (message: string[]) => errors(toast, message),
+      finally: () => {
+        // Reset form value
+        mulSpacForm.reset();
       },
     });
   }
@@ -1357,10 +1444,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
           <span className="sr-only">Back</span>
         </Button>
         <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-          Xem thông tin sinh viên
+          Xem thông tin hồ sơ sinh viên
         </h1>
-        <Badge variant="outline" className="ml-auto sm:ml-0">
-          EAUT
+        <Badge
+          variant={studentData?.approve ? 'success' : 'destructive'}
+          className="ml-auto sm:ml-0"
+        >
+          {studentData?.approve === true ? 'Đã xét duyệt' : 'Chưa xét duyệt'}
         </Badge>
       </div>
       <Tabs defaultValue="info" className="overflow-auto">
@@ -1379,7 +1469,12 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                     Thông tin chi tiết
                   </h3>
                   <div className="hidden items-center gap-2 md:ml-auto md:flex">
-                    <Button size="sm" className="h-7 gap-1" type="submit">
+                    <Button
+                      size="sm"
+                      className="h-7 gap-1"
+                      type="submit"
+                      disabled={isLoading}
+                    >
                       <PlusCircle className="h-3.5 w-3.5" />
                       <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                         Cập nhật hồ sơ sinh viên
@@ -1495,8 +1590,8 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                               'text-muted-foreground',
                                           )}
                                         >
-                                          {field.value ? (
-                                            format(field.value, 'dd/MM/yyyy')
+                                          {field?.value ? (
+                                            field.value
                                           ) : (
                                             <span>Chọn ngày sinh</span>
                                           )}
@@ -1510,8 +1605,15 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     >
                                       <Calendar
                                         mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
+                                        selected={new Date(field.value)}
+                                        onSelect={(e) => {
+                                          field.onChange(
+                                            format(
+                                              new Date(e as Date),
+                                              'dd/MM/yyyy',
+                                            ),
+                                          );
+                                        }}
                                         disabled={(date) =>
                                           date > new Date() ||
                                           date < new Date('1900-01-01')
@@ -1596,64 +1698,6 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                             />
                             <FormField
                               control={studentInfoForm.control}
-                              name="nationality"
-                              render={({ field }) => (
-                                <FormItem className="grid">
-                                  <FormLabel htmlFor="text">
-                                    Quốc tịch
-                                  </FormLabel>
-                                  <Select
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Quốc tịch" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value={NationEnum.VIETNAM}>
-                                        Việt Nam
-                                      </SelectItem>
-                                      <SelectItem value={NationEnum.OTHER}>
-                                        Khác
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={studentInfoForm.control}
-                              name="nation"
-                              render={({ field }) => (
-                                <FormItem className="grid">
-                                  <FormLabel htmlFor="text">Quốc gia</FormLabel>
-                                  <Select
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Quốc gia" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value={NationEnum.VIETNAM}>
-                                        Việt Nam
-                                      </SelectItem>
-                                      <SelectItem value={NationEnum.OTHER}>
-                                        Khác
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={studentInfoForm.control}
                               name="state"
                               render={({ field }) => (
                                 <FormItem className="grid">
@@ -1684,6 +1728,67 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                         value={StudyStateEnum.REJECTED}
                                       >
                                         Bỏ học
+                                      </SelectItem>
+                                      <SelectItem value={StudyStateEnum.NOTYET}>
+                                        Chưa đi học
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={studentInfoForm.control}
+                              name="nation"
+                              render={({ field }) => (
+                                <FormItem className="grid">
+                                  <FormLabel htmlFor="text">Quốc gia</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field?.value ?? ''}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Chọn quốc gia" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value={NationEnum.VIETNAM}>
+                                        Việt Nam
+                                      </SelectItem>
+                                      <SelectItem value={NationEnum.OTHER}>
+                                        Khác
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={studentInfoForm.control}
+                              name="nationality"
+                              render={({ field }) => (
+                                <FormItem className="grid">
+                                  <FormLabel htmlFor="text">
+                                    Quốc tịch
+                                  </FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Quốc tịch" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value={NationEnum.VIETNAM}>
+                                        Việt Nam
+                                      </SelectItem>
+                                      <SelectItem value={NationEnum.OTHER}>
+                                        Khác
                                       </SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -1954,16 +2059,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Năm tốt nghiệp</FormLabel>
                                   <FormControl>
                                     <Input
-                                      type="number"
+                                      type="text"
                                       placeholder="Năm tốt nghiệp"
                                       {...field}
-                                      onChange={(e) =>
-                                        numberInputChange(
-                                          e,
-                                          'graduate_year',
-                                          field,
-                                        )
-                                      }
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -2089,7 +2187,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                 <FormLabel htmlFor="text">Lớp học</FormLabel>
                                 <Select
                                   onValueChange={field.onChange}
-                                  defaultValue={studentData.class_id}
+                                  defaultValue={studentData.class_id ?? ''}
                                 >
                                   <FormControl>
                                     <SelectTrigger>
@@ -2174,7 +2272,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <Select
                                     onValueChange={field.onChange}
                                     defaultValue={
-                                      studentData.admissions_industry
+                                      studentData.admissions_industry ?? ''
                                     }
                                   >
                                     <FormControl>
@@ -2632,6 +2730,61 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                         />
                                       </FormControl>
                                       <FormLabel>Đã trả lại</FormLabel>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button type="submit">Thêm</Button>
+                            </DialogFooter>
+                          </form>
+                        </Form>
+                      </DialogContent>
+                    </Dialog>
+                    <Dialog open={openMulSpac} onOpenChange={setOpenMulSpac}>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-7"
+                        >
+                          <PlusCircle className="h-3.5 w-3.5" />
+                          Thêm nhiều chứng chỉ
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <Form {...mulSpacForm}>
+                          <form
+                            onSubmit={mulSpacForm.handleSubmit(onInsertMulSpac)}
+                          >
+                            <DialogHeader>
+                              <DialogTitle>Thêm các tệp chứng chỉ</DialogTitle>
+                              <DialogDescription>
+                                Thêm tệp chứng chỉ vào danh sách giấy tờ nhập
+                                trường
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid">
+                                <FormField
+                                  control={mulSpacForm.control}
+                                  name="files"
+                                  render={({ field }) => (
+                                    <FormItem className="grid">
+                                      <FormLabel htmlFor="text">
+                                        Chọn các file PDF
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="file"
+                                          accept="application/pdf"
+                                          placeholder="Chọn file PDF"
+                                          {...filesRef}
+                                          multiple
+                                        />
+                                      </FormControl>
                                       <FormMessage />
                                     </FormItem>
                                   )}

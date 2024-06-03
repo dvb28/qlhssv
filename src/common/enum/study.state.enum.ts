@@ -2,6 +2,7 @@ export enum StudyStateEnum {
   ACCEPTED = 'ACCEPTED',
   REJECTED = 'REJECTED',
   PENDING = 'PENDING',
+  NOTYET = 'NOTYET',
 }
 
 export const StateToString = (key: StudyStateEnum) => {
@@ -12,5 +13,7 @@ export const StateToString = (key: StudyStateEnum) => {
       return 'Bỏ học';
     case StudyStateEnum.PENDING:
       return 'Bảo lưu';
+    case StudyStateEnum.NOTYET:
+      return 'Chưa đi học';
   }
 };

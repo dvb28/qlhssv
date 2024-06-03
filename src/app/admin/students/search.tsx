@@ -49,9 +49,9 @@ import {
 } from '@tanstack/react-table';
 import { Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Skeleton } from '../ui/skeleton';
-import Empty from '../ui/empty';
-import { Input } from '../ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import Empty from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -67,6 +67,12 @@ import { toast } from 'sonner';
 import { fetcher } from '@/common/utils/fetcher';
 import { PageConfig } from '@/common/types/page.config.type';
 
+enum ApproveSearchEnum {
+  BOTH = 'BOTH',
+  TRUE = 'TRUE',
+  FALSE = 'FALSE',
+}
+
 // Validate Schema
 const searchSchema = z.object({
   search: z
@@ -77,6 +83,12 @@ const searchSchema = z.object({
   field: z.string({
     required_error: 'Vui lòng chọn cột muốn tìm kiếm',
   }),
+  approve: z.enum(
+    [ApproveSearchEnum.BOTH, ApproveSearchEnum.TRUE, ApproveSearchEnum.FALSE],
+    {
+      required_error: 'Trường này không được trống.',
+    },
+  ),
 });
 
 // Props
@@ -91,7 +103,7 @@ type Props = {
   source: string;
 };
 
-export default function TableSearch({
+export default function StudentTableSearch({
   title,
   source,
   columns,
@@ -106,6 +118,7 @@ export default function TableSearch({
     resolver: zodResolver(searchSchema),
     defaultValues: {
       search: '',
+      approve: ApproveSearchEnum.BOTH,
     },
   });
 
@@ -323,7 +336,7 @@ export default function TableSearch({
                 <CardHeader>
                   <CardTitle>{title}</CardTitle>
                   <CardDescription className="text-nowrap">
-                    Tìm kiém thông tin dựa theo các cột cụ thể
+                    Tìm kiếm thông tin dựa theo các cột cụ thể
                   </CardDescription>
                 </CardHeader>
               </div>
@@ -383,6 +396,44 @@ export default function TableSearch({
                                   )
                                 );
                               })}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="approve"
+                    render={({ field }) => (
+                      <FormItem className="grid">
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-[180px] max-md:w-full">
+                              <SelectValue placeholder="Chọn cột tìm kiếm" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem
+                              key={ApproveSearchEnum.BOTH}
+                              value={ApproveSearchEnum.BOTH}
+                            >
+                              Cả hai
+                            </SelectItem>
+                            <SelectItem
+                              key={ApproveSearchEnum.TRUE}
+                              value={ApproveSearchEnum.TRUE}
+                            >
+                              Đã xét duyệt
+                            </SelectItem>
+                            <SelectItem
+                              key={ApproveSearchEnum.FALSE}
+                              value={ApproveSearchEnum.FALSE}
+                            >
+                              Chưa xét duyệt
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </FormItem>

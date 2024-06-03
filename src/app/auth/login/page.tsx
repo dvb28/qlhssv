@@ -25,6 +25,8 @@ import { toast } from 'sonner';
 import { ReadonlyURLSearchParams, useSearchParams } from 'next/navigation';
 import { signIn, SignInResponse } from 'next-auth/react';
 import { useRouter } from 'next-nprogress-bar';
+import Image from 'next/image';
+import { errors } from '@/common/utils/ultils';
 
 type Props = {};
 
@@ -96,18 +98,21 @@ export default function Login({}: Props) {
         // Show message
         return 'Đăng nhập thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   }
 
   // Return
   return (
-    <div className="flex items-center min-h-screen justify-center p-9">
+    <div className="flex items-center min-h-screen justify-center p-9 flex-col">
+      <div className='mb-8 flex justify-center'>
+        <Image src="/images/logo.png" alt="Logo" width={300} height={300} />
+      </div>
       <Card className="max-w-sm w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Đăng nhập</CardTitle>
+          <CardTitle className="text-2xl">Hệ thống quản lý sinh viên</CardTitle>
           <CardDescription>
-            Nhập email và mật khẩu để đăng nhập.
+            Đăng nhập hệ thống quản lý sinh viên.
           </CardDescription>
         </CardHeader>
         <CardContent>

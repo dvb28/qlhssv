@@ -38,7 +38,9 @@ const breadcrumb = (path: string) => {
     case 'course':
       return <Link href={`/admin/course`}>Khoá học</Link>;
     case 'setting':
-      return <Link href={`/admin/majors`}>Cài đặt</Link>;
+      return <Link href={`/admin/setting`}>Cài đặt</Link>;
+    case 'appearance':
+      return <Link href={`/admin/setting/appearance`}>Giao diện</Link>;
     case 'student-add':
       return <Link href={`/admin/students/student-add`}>Thêm sinh viên</Link>;
     case 'student-detail':

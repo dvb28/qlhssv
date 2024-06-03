@@ -37,10 +37,6 @@ export const authOptions: any = {
       },
     }),
   ],
-  session: {
-    strategy: 'jwt',
-    maxAge: 3600,
-  },
   callbacks: {
     async session({ token: { data } }: any): Promise<SessionType | undefined> {
       // Return session info

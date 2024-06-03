@@ -98,6 +98,8 @@ import type Course from '@/common/interface/Course';
 import { Separator } from '@radix-ui/react-dropdown-menu';
 import { CourseDetail } from '@/common/types/course/detail';
 import { PageConfig } from '@/common/types/page.config.type';
+import { errors } from '@/common/utils/ultils';
+import TableSearch from '@/components/custom/table.search';
 
 const IdToColumn = (key: string) => {
   switch (key) {
@@ -242,6 +244,7 @@ const courseSchema = z.object({
 type UpdateFormType = {
   row: Row<Course>;
   course: Course[];
+  setHandled: React.Dispatch<React.SetStateAction<any>>;
   setOpenUpdateCourse: React.Dispatch<React.SetStateAction<boolean>>;
   setCourse: React.Dispatch<React.SetStateAction<Course[]>>;
 };
@@ -250,6 +253,7 @@ const UpdateForm: FC<UpdateFormType> = ({
   row,
   course,
   setCourse,
+  setHandled,
   setOpenUpdateCourse,
 }) => {
   // Form update faculty
@@ -300,12 +304,15 @@ const UpdateForm: FC<UpdateFormType> = ({
         });
 
         // Set data
+        setHandled(['UPDATE', row.index, data]);
+
+        // Set data
         setCourse(updatedItems);
 
         // Show message
         return 'Cập nhật thông tin khoá học thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         formUpdate.reset();
@@ -521,6 +528,9 @@ export default function Course() {
   // Page config
   const [pageConfig, setPageConfig] = useState<PageConfig | null>(null);
 
+  // Handled
+  const [handled, setHandled] = useState<any>();
+
   // Dialog Open
   const [deleteRowDilog, setDeleteRowDilog] = useState<boolean>(false);
 
@@ -623,7 +633,7 @@ export default function Course() {
         // Show message
         return 'Thêm khoá học thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         form.reset();
@@ -673,6 +683,9 @@ export default function Course() {
       payload: { ids },
     });
 
+    // Check request
+    fetch?.ok && setHandled(['DELETE', ids.length > 1 ? 1 : 0, ids]);
+
     // Check success
     return fetch?.ok;
   };
@@ -697,7 +710,7 @@ export default function Course() {
       loading: `Đang xóa khoá học ${row.original.name}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
-        if (course.length === 1) {
+        if (course.length === 1 && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -708,7 +721,7 @@ export default function Course() {
         // Show message
         return `Xóa khoá học ${row.original.name} thành công`;
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -794,7 +807,7 @@ export default function Course() {
         // Show message
         return 'Xóa các khoá học đã chọn thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -840,6 +853,15 @@ export default function Course() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <TableSearch
+              columns={columns}
+              title="Tìm kiếm khoá học"
+              handled={handled}
+              setHandled={setHandled}
+              IdToColumn={IdToColumn}
+              source={'course'}
+              searchFields={['name', 'desc']}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 gap-1">
@@ -1062,6 +1084,7 @@ export default function Course() {
                                       row={row}
                                       course={course}
                                       setCourse={setCourse}
+                                      setHandled={setHandled}
                                       setOpenUpdateCourse={setOpenUpdateCourse}
                                     />
                                   </DialogContent>

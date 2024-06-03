@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import { Inter as FontSans } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import '@/common/styles/globals.css';
@@ -6,16 +5,12 @@ import * as React from 'react';
 import { Toaster } from 'sonner';
 import AppProgress from '@/components/custom/app.progress';
 import SessionProvider from '@/common/providers/session.providers';
+import { ThemeProvider } from '@/components/theme/theme.providers';
 
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
-
-export const metadata: Metadata = {
-  title: 'QLHSSV',
-  description: 'Quản lý hồ sơ sinh viên',
-};
 
 export default function RootLayout({
   children,
@@ -23,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased',
@@ -31,9 +26,14 @@ export default function RootLayout({
         )}
       >
         <SessionProvider>
-          <AppProgress />
-          <Toaster position="top-right" richColors duration={3000} />
-          {children}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+          >
+            <AppProgress />
+            <Toaster position="top-right" richColors duration={3000} />
+            {children}
+          </ThemeProvider>
         </SessionProvider>
       </body>
     </html>

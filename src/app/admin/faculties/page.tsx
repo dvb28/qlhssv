@@ -99,7 +99,7 @@ import { FacultyDetail } from '@/common/types/faculty/detail';
 import { Separator } from '@/components/ui/separator';
 import TableSearch from '@/components/custom/table.search';
 import { PageConfig } from '@/common/types/page.config.type';
-import { getCommonPinningStyles } from '@/common/utils/ultils';
+import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
 
 const IdToColumn = (key: string) => {
   switch (key) {
@@ -204,7 +204,7 @@ const UpdateForm: FC<UpdateFormType> = ({
         // Show message
         return 'Cập nhật thông tin khoa thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Disable loading
         setLoadingUpdateFaculty(false);
@@ -449,7 +449,8 @@ export default function Faculties() {
   const [open, setOpen] = useState<boolean>(false);
 
   // Dialog Update
-  const [loadingUpdateFaculty, setLoadingUpdateFaculty] = useState<boolean>(false);
+  const [loadingUpdateFaculty, setLoadingUpdateFaculty] =
+    useState<boolean>(false);
 
   // Faculty list
   const [faculties, setFaculties] = useState<Faculty[]>([]);
@@ -518,7 +519,7 @@ export default function Faculties() {
         // Show message
         return 'Thêm khoa thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         form.reset();
@@ -595,7 +596,7 @@ export default function Faculties() {
       loading: `Đang xóa khoa ${row.original.name}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
-        if (faculties.length === 1) {
+        if (faculties.length === 1 && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -606,7 +607,7 @@ export default function Faculties() {
         // Show message
         return `Xóa khoa ${row.original.name} thành công`;
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -694,7 +695,7 @@ export default function Faculties() {
         // Show message
         return 'Xóa các khoa đã chọn thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -976,16 +977,18 @@ export default function Faculties() {
                   .filter((column) => column.getCanHide())
                   .map((column) => {
                     return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                      >
-                        {IdToColumn(column.id)}
-                      </DropdownMenuCheckboxItem>
+                      column.id !== 'actions' && (
+                        <DropdownMenuCheckboxItem
+                          key={column.id}
+                          className="capitalize"
+                          checked={column.getIsVisible()}
+                          onCheckedChange={(value) =>
+                            column.toggleVisibility(!!value)
+                          }
+                        >
+                          {IdToColumn(column.id)}
+                        </DropdownMenuCheckboxItem>
+                      )
                     );
                   })}
               </DropdownMenuContent>

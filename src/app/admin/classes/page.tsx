@@ -107,6 +107,8 @@ import Course from '@/common/interface/Course';
 import { Separator } from '@radix-ui/react-dropdown-menu';
 import { ClassDetail } from '@/common/types/class/detail';
 import { PageConfig } from '@/common/types/page.config.type';
+import { errors } from '@/common/utils/ultils';
+import TableSearch from '@/components/custom/table.search';
 
 const IdToColumn = (key: string) => {
   switch (key) {
@@ -299,6 +301,7 @@ type UpdateFormType = {
   classess: Class[];
   facultySelect: Faculty[];
   courseSelect: Course[];
+  setHandled: React.Dispatch<React.SetStateAction<any>>;
   setOpenUpdateClass: React.Dispatch<React.SetStateAction<boolean>>;
   setClassess: React.Dispatch<React.SetStateAction<Class[]>>;
 };
@@ -308,6 +311,7 @@ const UpdateForm: FC<UpdateFormType> = ({
   classess,
   facultySelect,
   courseSelect,
+  setHandled,
   setClassess,
   setOpenUpdateClass,
 }) => {
@@ -383,12 +387,15 @@ const UpdateForm: FC<UpdateFormType> = ({
         });
 
         // Set data
+        setHandled(['UPDATE', row.index, data]);
+
+        // Set data
         setClassess(updatedItems);
 
         // Show message
         return 'Cập nhật thông tin lớp học thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         formUpdate.reset();
@@ -671,6 +678,9 @@ export default function Classess() {
   // Course select data
   const [courseSelect, setCourseSelect] = useState<Course[]>([]);
 
+  // Handled
+  const [handled, setHandled] = useState<any>();
+
   // Dialog Open
   const [deleteRowDilog, setDeleteRowDilog] = useState<boolean>(false);
 
@@ -790,7 +800,7 @@ export default function Classess() {
         // Show message
         return 'Thêm lớp học thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         form.reset();
@@ -840,6 +850,9 @@ export default function Classess() {
       payload: { ids },
     });
 
+    // Check request
+    fetch?.ok && setHandled(['DELETE', ids.length > 1 ? 1 : 0, ids]);
+
     // Check success
     return fetch?.ok;
   };
@@ -864,7 +877,7 @@ export default function Classess() {
       loading: `Đang xóa lớp học ${row.original.name}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
-        if (classess.length === 1) {
+        if (classess.length === 1 && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -875,7 +888,7 @@ export default function Classess() {
         // Show message
         return `Xóa lớp học ${row.original.name} thành công`;
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -967,7 +980,7 @@ export default function Classess() {
         // Show message
         return 'Xóa các lớp học đã chọn thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -1036,6 +1049,15 @@ export default function Classess() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <TableSearch
+              columns={columns}
+              title="Tìm kiếm lớp"
+              handled={handled}
+              setHandled={setHandled}
+              IdToColumn={IdToColumn}
+              source={'class'}
+              searchFields={['identifier_id', 'name', 'desc']}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 gap-1">
@@ -1319,6 +1341,7 @@ export default function Classess() {
                                   <DialogContent className="sm:max-w-[425px]">
                                     <UpdateForm
                                       row={row}
+                                      setHandled={setHandled}
                                       facultySelect={facultySelect}
                                       courseSelect={courseSelect}
                                       classess={classess}

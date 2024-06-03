@@ -12,6 +12,8 @@ import { Button } from './button';
 import { signOut, useSession } from 'next-auth/react';
 import { Skeleton } from './skeleton';
 import { toast } from 'sonner';
+import { errors } from '@/common/utils/ultils';
+import Link from 'next/link';
 type Props = {};
 
 export default function User({}: Props) {
@@ -35,7 +37,7 @@ export default function User({}: Props) {
         // Show message
         return 'Đăng xuất thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -82,8 +84,9 @@ export default function User({}: Props) {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Cài đặt</DropdownMenuItem>
-          <DropdownMenuItem>Hỗ trợ</DropdownMenuItem>
+          <Link href="/admin/setting">
+            <DropdownMenuItem>Cài đặt</DropdownMenuItem>
+          </Link>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout}>Đăng xuất</DropdownMenuItem>
         </DropdownMenuContent>

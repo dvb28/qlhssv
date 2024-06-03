@@ -107,7 +107,7 @@ import { Separator } from '@/components/ui/separator';
 import { MajorsDetail } from '@/common/types/majors/detail';
 import { PageConfig } from '@/common/types/page.config.type';
 import TableSearch from '@/components/custom/table.search';
-import { getCommonPinningStyles } from '@/common/utils/ultils';
+import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
 
 const IdToColumn = (key: string) => {
   switch (key) {
@@ -230,7 +230,7 @@ const UpdateForm: FC<UpdateFormType> = ({
         // Show message
         return 'Cập nhật thông tin ngành học thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Disable loading
         setLoadingUpdateMajors(false);
@@ -276,7 +276,9 @@ const UpdateForm: FC<UpdateFormType> = ({
                   <Select onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={row.original?.faculty?.name} />
+                        <SelectValue
+                          placeholder={row.original?.faculty?.name}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -580,7 +582,7 @@ export default function Majors() {
         // Show message
         return 'Thêm ngành học thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
         // Reset form value
         form.reset();
@@ -657,7 +659,7 @@ export default function Majors() {
       loading: `Đang xóa ngành học ${row.original.name}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
-        if (majors.length === 1) {
+        if (majors.length === 1 && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -668,7 +670,7 @@ export default function Majors() {
         // Show message
         return `Xóa ngành học ${row.original.name} thành công`;
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -756,7 +758,7 @@ export default function Majors() {
         // Show message
         return 'Xóa các ngành học đã chọn thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -1071,16 +1073,18 @@ export default function Majors() {
                   .filter((column) => column.getCanHide())
                   .map((column) => {
                     return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                      >
-                        {IdToColumn(column.id)}
-                      </DropdownMenuCheckboxItem>
+                      column.id !== 'actions' && (
+                        <DropdownMenuCheckboxItem
+                          key={column.id}
+                          className="capitalize"
+                          checked={column.getIsVisible()}
+                          onCheckedChange={(value) =>
+                            column.toggleVisibility(!!value)
+                          }
+                        >
+                          {IdToColumn(column.id)}
+                        </DropdownMenuCheckboxItem>
+                      )
                     );
                   })}
               </DropdownMenuContent>

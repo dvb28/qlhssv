@@ -48,6 +48,7 @@ import Majors from '@/common/interface/Majors';
 import { fetcher } from '@/common/utils/fetcher';
 import Class from '@/common/interface/Class';
 import { useRouter } from 'next-nprogress-bar';
+import { errors } from '@/common/utils/ultils';
 
 // Form Student Info Schema
 const studentInfoSchema = z.object({
@@ -79,13 +80,10 @@ const studentInfoSchema = z.object({
     })
     .length(10, {
       message: 'Định dạng số điện thoại không đúng.',
-    }),
-  nationality: z.enum([NationEnum.VIETNAM, NationEnum.OTHER], {
-    required_error: 'Trường này không được trống.',
-  }),
-  nation: z.enum([NationEnum.VIETNAM, NationEnum.OTHER], {
-    required_error: 'Trường này không được trống.',
-  }),
+    })
+    .optional(),
+  nationality: z.string().optional(),
+  nation: z.string().optional(),
   date_of_birth: z.date({
     required_error: 'Trường này không được trống.',
   }),
@@ -97,7 +95,12 @@ const studentInfoSchema = z.object({
       message: 'Căn cước công dân phải có đúng 12 số.',
     }),
   state: z.enum(
-    [StudyStateEnum.ACCEPTED, StudyStateEnum.PENDING, StudyStateEnum.REJECTED],
+    [
+      StudyStateEnum.ACCEPTED,
+      StudyStateEnum.PENDING,
+      StudyStateEnum.REJECTED,
+      StudyStateEnum.NOTYET,
+    ],
     {
       required_error: 'Trường này không được trống.',
     },
@@ -109,25 +112,35 @@ const studentInfoSchema = z.object({
     required_error: 'Trường này không được trống.',
   }),
   extra_majors: z.string().optional(),
-  class_id: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
+  class_id: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
   father_name: z.string().optional(),
   mother_name: z.string().optional(),
   mother_date_of_birth: z.any(),
   father_date_of_birth: z.any(),
-  sbd: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
-  block: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
-  admissions_industry: z.string({
-    required_error: 'Trường này không được trống.',
-  }),
-  area: z.number({
-    required_error: 'Trường này không được trống.',
-  }),
+  sbd: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
+  block: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
+  admissions_industry: z
+    .string({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
+  area: z
+    .number({
+      required_error: 'Trường này không được trống.',
+    })
+    .optional(),
   suj_score_1: z
     .number({
       required_error: 'Trường này không được trống.',
@@ -169,28 +182,15 @@ const studentInfoSchema = z.object({
       message: 'Trường này phải <= 10.',
     }),
   total_score: z.number().optional(),
-  count: z.number({
-    required_error: 'Trường này không được trống.',
-  }),
-  study_rank: z.enum([RankEnum.TOT, RankEnum.KEM, RankEnum.KHA], {
-    required_error: 'Trường này không được trống.',
-  }),
-  morality_rank: z.enum([RankEnum.TOT, RankEnum.KEM, RankEnum.KHA], {
-    required_error: 'Trường này không được trống.',
-  }),
-  graduate_rank: z.enum([RankEnum.TOT, RankEnum.KEM, RankEnum.KHA], {
-    required_error: 'Trường này không được trống.',
-  }),
-  graduate_year: z
+  count: z
     .number({
       required_error: 'Trường này không được trống.',
     })
-    .min(1900, {
-      message: 'Định dạng năm không đúng.',
-    })
-    .max(new Date().getFullYear(), {
-      message: 'Định dạng năm không đúng.',
-    }),
+    .optional(),
+  study_rank: z.string().optional(),
+  morality_rank: z.string().optional(),
+  graduate_rank: z.string().optional(),
+  graduate_year: z.string().optional(),
 });
 
 export default function StudentAdd() {
@@ -203,11 +203,16 @@ export default function StudentAdd() {
   // Class select data
   const [classSelect, setClasssSelect] = useState<Class[]>([]);
 
+  // Loading
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
   // 1. Define your studentInfoForm.
   const studentInfoForm = useForm<z.infer<typeof studentInfoSchema>>({
     resolver: zodResolver(studentInfoSchema),
     defaultValues: {
       email: '',
+      fullname: '',
+      cccd: '',
       religion: 'Không',
       suj_score_1: 0,
       suj_score_2: 0,
@@ -245,6 +250,19 @@ export default function StudentAdd() {
   };
 
   function onSubmit(values: z.infer<typeof studentInfoSchema>) {
+    // Set loading
+    setIsLoading(true);
+
+    // Vals
+    const vals = {};
+
+    // Map and check
+    Object.keys(values).forEach((key: string) => {
+      Object.assign(vals, {
+        [key]: (values as any)?.[key] ?? null,
+      });
+    });
+
     // Promise
     const promise = () =>
       new Promise(async (resolve, reject) =>
@@ -253,7 +271,16 @@ export default function StudentAdd() {
           const created = await fetcher({
             method: 'POST',
             url: '/students',
-            payload: values,
+            payload: {
+              ...vals,
+              date_of_birth: format(values.date_of_birth, 'dd/MM/yyyy'),
+              father_date_of_birth: values?.father_date_of_birth
+                ? format(values.father_date_of_birth, 'dd/MM/yyyy')
+                : null,
+              mother_date_of_birth: values?.father_date_of_birth
+                ? format(values.father_date_of_birth, 'dd/MM/yyyy')
+                : null,
+            },
           });
 
           // Check success and resolve
@@ -268,14 +295,17 @@ export default function StudentAdd() {
         // Show message
         return 'Tạo hồ sơ sinh viên thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
       finally: () => {
+        // Set loading
+        setIsLoading(false);
+
         // Reset form value
         studentInfoForm.reset();
 
         // Routing
         navigate?.push('/admin/students');
-      }
+      },
     });
   }
 
@@ -325,7 +355,7 @@ export default function StudentAdd() {
                 EAUT
               </Badge>
               <div className="hidden items-center gap-2 md:ml-auto md:flex">
-                <Button size="sm" className="h-7 gap-1" type="submit">
+                <Button size="sm" className="h-7 gap-1" type="submit" disabled={isLoading}>
                   <PlusCircle className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Tạo hồ sơ sinh viên
@@ -414,10 +444,7 @@ export default function StudentAdd() {
                             <FormItem className="grid">
                               <FormLabel>Tôn giáo</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="Tôn giáo"
-                                  {...field}
-                                />
+                                <Input placeholder="Tôn giáo" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -542,25 +569,31 @@ export default function StudentAdd() {
                         />
                         <FormField
                           control={studentInfoForm.control}
-                          name="nationality"
+                          name="state"
                           render={({ field }) => (
                             <FormItem className="grid">
-                              <FormLabel htmlFor="text">Quốc tịch</FormLabel>
+                              <FormLabel htmlFor="text">Trạng thái</FormLabel>
                               <Select
                                 onValueChange={field.onChange}
                                 defaultValue={field.value}
                               >
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Quốc tịch" />
+                                    <SelectValue placeholder="Trạng thái" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value={NationEnum.VIETNAM}>
-                                    Việt Nam
+                                  <SelectItem value={StudyStateEnum.ACCEPTED}>
+                                    Đi học
                                   </SelectItem>
-                                  <SelectItem value={NationEnum.OTHER}>
-                                    Khác
+                                  <SelectItem value={StudyStateEnum.PENDING}>
+                                    Bảo lưu
+                                  </SelectItem>
+                                  <SelectItem value={StudyStateEnum.REJECTED}>
+                                    Bỏ học
+                                  </SelectItem>
+                                  <SelectItem value={StudyStateEnum.NOTYET}>
+                                    Chưa đi học
                                   </SelectItem>
                                 </SelectContent>
                               </Select>
@@ -598,28 +631,25 @@ export default function StudentAdd() {
                         />
                         <FormField
                           control={studentInfoForm.control}
-                          name="state"
+                          name="nationality"
                           render={({ field }) => (
                             <FormItem className="grid">
-                              <FormLabel htmlFor="text">Trạng thái</FormLabel>
+                              <FormLabel htmlFor="text">Quốc tịch</FormLabel>
                               <Select
                                 onValueChange={field.onChange}
                                 defaultValue={field.value}
                               >
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Trạng thái" />
+                                    <SelectValue placeholder="Quốc tịch" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value={StudyStateEnum.ACCEPTED}>
-                                    Đi học
+                                  <SelectItem value={NationEnum.VIETNAM}>
+                                    Việt Nam
                                   </SelectItem>
-                                  <SelectItem value={StudyStateEnum.PENDING}>
-                                    Bảo lưu
-                                  </SelectItem>
-                                  <SelectItem value={StudyStateEnum.REJECTED}>
-                                    Bỏ học
+                                  <SelectItem value={NationEnum.OTHER}>
+                                    Khác
                                   </SelectItem>
                                 </SelectContent>
                               </Select>

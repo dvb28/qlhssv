@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { getSession } from 'next-auth/react';
+import { getSession, signOut } from 'next-auth/react';
 
 // API Host
 const host = 'localhost';
@@ -37,7 +37,13 @@ const fetching = async (response: AxiosResponse) => {
   const status = response?.status;
 
   // Check Status
-  const ok = status && (status >= 200 && status < 400);
+  const ok = status && status >= 200 && status < 400;
+
+  // Unthorized
+  if (status === 401) {
+    // Sight out
+    signOut({ callbackUrl: '/auth/login'});
+  }
 
   // Fetch response data
   const data = response?.data;

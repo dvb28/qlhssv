@@ -18,7 +18,9 @@ export default interface Students {
   religion: string;
   nation: string;
   phone: string;
+  approve: boolean;
   state: string;
+  msv: string;
   study_rank: string;
   morality_rank: string;
   graduate_rank: string;

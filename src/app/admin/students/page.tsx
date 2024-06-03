@@ -77,11 +77,24 @@ import { GenderEnum, GenderToString } from '@/common/enum/gender.enum';
 import type Students from '@/common/interface/Students';
 import { StateToString, StudyStateEnum } from '@/common/enum/study.state.enum';
 import { NationEnum, NationToString } from '@/common/enum/nation.enum';
-import { getCommonPinningStyles } from '@/common/utils/ultils';
+import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
 import { Badge } from '@/components/ui/badge';
 import { RankEnum, RankToString } from '@/common/enum/rank.enum';
 import { PageConfig } from '@/common/types/page.config.type';
-import TableSearch from '@/components/custom/table.search';
+import StudentTableSearch from './search';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+enum ApproveSearchEnum {
+  BOTH = 'BOTH',
+  TRUE = 'TRUE',
+  FALSE = 'FALSE',
+}
 
 const IdToColumn = (key: string) => {
   switch (key) {
@@ -113,6 +126,8 @@ const IdToColumn = (key: string) => {
       return 'Số điện thoại';
     case 'home_town':
       return 'Quê quán';
+    case 'approve':
+      return 'Trạng thái xét duyệt';
     case 'created_at':
       return 'Ngày tạo';
     case 'updated_at':
@@ -132,6 +147,11 @@ export default function Students() {
 
   // Handled
   const [handled, setHandled] = useState<any>();
+
+  // Approve state
+  const [approveState, setApproveState] = useState<string>(
+    ApproveSearchEnum.BOTH,
+  );
 
   // Dialog Open
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -153,6 +173,58 @@ export default function Students() {
 
   // Table Selection
   const [rowSelection, setRowSelection] = useState({});
+
+  // Handle set approve
+  const handleSetApprove = (val: string) => {
+    // Set approve
+    setApproveState(val);
+  };
+
+  // Approve student
+  const handleApprove = async (row: Row<Students>) => {
+    // Promise
+    const promise = (): Promise<Students> => {
+      // Promise
+      return new Promise(async (resolve, reject) =>
+        setTimeout(async () => {
+          // Deleting
+          const approved = await fetcher({
+            method: 'PUT',
+            url: `/students/approve`,
+            payload: { id: row.original.id },
+          });
+
+          // Resolve
+          approved ? resolve(approved?.data) : reject(approved?.message);
+        }, 1000),
+      );
+    };
+
+    // Toasts
+    toast.promise(promise, {
+      loading: `Đang duyệt hồ sơ sinh viên ${row.original.fullname}, vui lòng đợi...`,
+      success: (data: Students) => {
+        // Update data
+        const updatedItems = students.map((item: Students, i: number) => {
+          // Check row index
+          if (i === row.index) return data;
+
+          // Return
+          return item;
+        });
+
+        // Set data
+        setHandled(['UPDATE', row.index, data]);
+
+        // Set data
+        setStudents(updatedItems);
+
+        // Show message
+        return `Duyệt hồ sơ sinh viên ${row.original.fullname} thành công`;
+      },
+      error: (message: string[]) => errors(toast, message),
+    });
+  };
 
   const handleDelete = async (ids: string[]) => {
     // Fetch
@@ -189,7 +261,7 @@ export default function Students() {
       loading: `Đang xóa sinh viên ${row.original.fullname}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
-        if (students.length === 1) {
+        if (students.length === 1 && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -200,7 +272,7 @@ export default function Students() {
         // Show message
         return `Xóa sinh viên ${row.original.fullname} thành công`;
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
@@ -234,6 +306,35 @@ export default function Students() {
       enableHiding: false,
     },
     {
+      accessorKey: 'msv',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Mã sinh viên
+            <CaretSortIcon className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        // MSV
+        const msv: string = row.getValue('msv');
+
+        // Return
+        return (
+          <div>
+            {msv?.length > 0 ? (
+              msv
+            ) : (
+              <Badge variant="destructive">Chưa được cấp</Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'fullname',
       header: ({ column }) => {
         return (
@@ -247,6 +348,31 @@ export default function Students() {
         );
       },
       cell: ({ row }) => <div className="">{row.getValue('fullname')}</div>,
+    },
+    {
+      accessorKey: 'approve',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Trạng thái xét duyệt
+            <CaretSortIcon className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        // Value
+        const isApprove = row.getValue('approve');
+
+        // Return
+        return (
+          <Badge variant={isApprove ? 'success' : 'destructive'}>
+            {isApprove ? 'Đã xét duyệt' : 'Chưa xét duyệt'}
+          </Badge>
+        );
+      },
     },
     {
       accessorKey: 'gender',
@@ -296,9 +422,11 @@ export default function Students() {
               <Badge
                 variant={
                   value === StudyStateEnum.ACCEPTED
-                    ? 'default'
+                    ? 'success'
                     : value === StudyStateEnum.REJECTED
                     ? 'destructive'
+                    : value === StudyStateEnum.NOTYET
+                    ? 'default'
                     : 'amber'
                 }
               >
@@ -321,11 +449,7 @@ export default function Students() {
         </Button>
       ),
       cell: ({ row }) => {
-        return (
-          <div className="text-left">
-            {format(row.getValue('date_of_birth'), 'dd/MM/yyyy')}
-          </div>
-        );
+        return <div className="text-left">{row.getValue('date_of_birth')}</div>;
       },
     },
     {
@@ -555,6 +679,11 @@ export default function Students() {
                 <DropdownMenuItem onClick={() => deleteStudents(row)}>
                   Xoá
                 </DropdownMenuItem>
+                {!row.original.approve && (
+                  <DropdownMenuItem onClick={() => handleApprove(row)}>
+                    Duyệt
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -587,6 +716,12 @@ export default function Students() {
     },
   });
 
+  // Handle filter approve
+  const handleFilterApprove = () => {
+    // Change page
+    setIsPageChange((prev) => !prev);
+  };
+
   // Row delete
   const rowDelete = (e: MouseEvent) => {
     // Stop default
@@ -614,7 +749,7 @@ export default function Students() {
     const fetch = await fetcher({
       method: 'GET',
       url: '/students/page',
-      payload: { page },
+      payload: { page, approve: approveState },
     });
 
     // Check success
@@ -648,6 +783,7 @@ export default function Students() {
 
       // Thêm dữ liệu từ JSON vào worksheet
       worksheet.columns = [
+        { header: 'Mã sinh viên', key: 'msv' },
         { header: 'Tên sinh viên', key: 'fullname' },
         { header: 'Địa chỉ Email', key: 'email' },
         { header: 'Căn cước công dân', key: 'cccd' },
@@ -659,7 +795,7 @@ export default function Students() {
         { header: 'Quốc tịch', key: 'nationality' },
         { header: 'Quốc gia', key: 'nation' },
         { header: 'Số điện thoại', key: 'phone' },
-        { header: 'Trạng thái di học', key: 'state' },
+        { header: 'Trạng thái đi học', key: 'state' },
         { header: 'Xếp loại học tập THPT', key: 'study_rank' },
         { header: 'Xếp loại hạnh kiểm THPT', key: 'morality_rank' },
         { header: 'Xếp loại tốt nghiệp THPT', key: 'graduate_rank' },
@@ -690,21 +826,18 @@ export default function Students() {
       fetch?.data.forEach((item: Students) => {
         worksheet.addRow({
           ...item,
+          msv: item?.msv ? item.msv : 'Chưa được cấp',
+          approveState: item?.approve ? 'Đã xét duyệt' : 'Chưa xét duyệt',
+          state: StateToString(item?.state as StudyStateEnum),
           gender: GenderToString(item?.gender as GenderEnum),
           nationality: NationToString(item?.nationality as NationEnum),
           nation: NationToString(item?.nation as NationEnum),
           graduate_rank: RankToString(item?.graduate_rank as RankEnum),
           morality_rank: RankToString(item?.morality_rank as RankEnum),
           study_rank: RankToString(item?.study_rank as RankEnum),
-          date_of_birth: item?.date_of_birth
-            ? format(item.date_of_birth, 'dd/MM/yyyy')
-            : '',
-          father_date_of_birth: item?.father_date_of_birth
-            ? format(item.father_date_of_birth, 'dd/MM/yyyy')
-            : '',
-          mother_date_of_birth: item?.mother_date_of_birth
-            ? format(item.mother_date_of_birth, 'dd/MM/yyyy')
-            : '',
+          date_of_birth: item?.date_of_birth,
+          father_date_of_birth: item?.father_date_of_birth,
+          mother_date_of_birth: item?.mother_date_of_birth,
           main_majors: item?.mmr ? item.mmr.name : '',
           extra_majors: item?.emr ? item.emr.name : '',
           classes: item?.classes ? item.classes.name : '',
@@ -764,13 +897,14 @@ export default function Students() {
         // Show message
         return 'Xóa các sinh viên đã chọn thành công';
       },
-      error: (message: string) => `${message}`,
+      error: (message: string[]) => errors(toast, message),
     });
   };
 
   // Effect load students
   useEffect(() => {
     (async () => await loadStudents(page))();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, isPageChange]);
 
   // Return
@@ -810,14 +944,23 @@ export default function Students() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <TableSearch
+            <StudentTableSearch
               columns={columns}
               title="Tìm kiếm ngành"
               handled={handled}
               setHandled={setHandled}
               IdToColumn={IdToColumn}
               source={'students'}
-              searchFields={['fullname']}
+              searchFields={[
+                'fullname',
+                'email',
+                'religion',
+                'phone',
+                'father_name',
+                'mother_name',
+                'place_of_birth',
+                'cccd',
+              ]}
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -873,12 +1016,48 @@ export default function Students() {
         </div>
         <TabsContent value="all">
           <Card x-chunk="dashboard-06-chunk-0">
-            <CardHeader>
-              <CardTitle>Sinh viên</CardTitle>
-              <CardDescription>
-                Danh sách và thông tin các sinh viên
-              </CardDescription>
-            </CardHeader>
+            <div className="flex justify-between">
+              <CardHeader>
+                <CardTitle>Sinh viên</CardTitle>
+                <CardDescription>
+                  Danh sách và thông tin các sinh viên
+                </CardDescription>
+              </CardHeader>
+              <div className="flex w-full max-w-sm items-center justify-end gap-1.5 mr-[20px]">
+                <Select
+                  value={approveState}
+                  onValueChange={handleSetApprove}
+                  defaultValue={ApproveSearchEnum.BOTH}
+                >
+                  <SelectTrigger className="w-[210px] max-md:w-full">
+                    <SelectValue placeholder="Lọc" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      key={ApproveSearchEnum.BOTH}
+                      value={ApproveSearchEnum.BOTH}
+                    >
+                      Chưa duyệt và đã duyệt
+                    </SelectItem>
+                    <SelectItem
+                      key={ApproveSearchEnum.TRUE}
+                      value={ApproveSearchEnum.TRUE}
+                    >
+                      Đã xét duyệt
+                    </SelectItem>
+                    <SelectItem
+                      key={ApproveSearchEnum.FALSE}
+                      value={ApproveSearchEnum.FALSE}
+                    >
+                      Chưa xét duyệt
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button className="w-[40px] px-2" onClick={handleFilterApprove}>
+                  Lọc
+                </Button>
+              </div>
+            </div>
             <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>
