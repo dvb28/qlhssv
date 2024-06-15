@@ -108,9 +108,9 @@ export default function Login({}: Props) {
       <div className='mb-8 flex justify-center'>
         <Image src="/images/logo.png" alt="Logo" width={300} height={300} />
       </div>
-      <Card className="max-w-sm w-full">
+      <Card className="max-w-md w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Hệ thống quản lý sinh viên</CardTitle>
+          <CardTitle className="text-2xl">Hệ thống quản lý hồ sơ sinh viên</CardTitle>
           <CardDescription>
             Đăng nhập hệ thống quản lý sinh viên.
           </CardDescription>

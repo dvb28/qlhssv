@@ -99,7 +99,14 @@ import { FacultyDetail } from '@/common/types/faculty/detail';
 import { Separator } from '@/components/ui/separator';
 import TableSearch from '@/components/custom/table.search';
 import { PageConfig } from '@/common/types/page.config.type';
-import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
+import {
+  errors,
+  getCommonPinningStyles,
+  verifyRole,
+} from '@/common/utils/ultils';
+import { useSession } from 'next-auth/react';
+import { Role } from '@/common/enum/role.enum';
+import Users from '@/common/interface/Users';
 
 const IdToColumn = (key: string) => {
   switch (key) {
@@ -426,6 +433,9 @@ export default function Faculties() {
       identifier_id: '',
     },
   });
+
+  // User data
+  const user = useSession()?.data?.user as Users;
 
   // Handled
   const [handled, setHandled] = useState<any>();
@@ -830,36 +840,6 @@ export default function Faculties() {
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button
-                      disabled={loadingUpdateFaculty}
-                      className={`w-full font-normal justify-start relative 
-                                        flex cursor-default select-none items-center 
-                                        rounded-sm px-2 py-1.5 text-sm outline-none 
-                                        transition-colors focus:bg-accent 
-                                        focus:text-accent-foreground 
-                                        data-[disabled]:pointer-events-none 
-                                        data-[disabled]:opacity-50`}
-                      variant="ghost"
-                    >
-                      {loadingUpdateFaculty && (
-                        <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Cập nhật
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <UpdateForm
-                      row={row}
-                      faculties={faculties}
-                      setHandled={setHandled}
-                      setFaculties={setFaculties}
-                      loadingUpdateFaculty={loadingUpdateFaculty}
-                      setLoadingUpdateFaculty={setLoadingUpdateFaculty}
-                    />
-                  </DialogContent>
-                </Dialog>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
                       className={`w-full font-normal justify-start relative 
                                         flex cursor-default select-none items-center 
                                         rounded-sm px-2 py-1.5 text-sm outline-none 
@@ -876,9 +856,45 @@ export default function Faculties() {
                     <ViewDetail id={row.original.id} />
                   </DialogContent>
                 </Dialog>
-                <DropdownMenuItem onClick={() => deleteFaculty(row)}>
-                  Xoá
-                </DropdownMenuItem>
+                {verifyRole(
+                  user?.roles,
+                  Role.ADMIN,
+                  <>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          disabled={loadingUpdateFaculty}
+                          className={`w-full font-normal justify-start relative 
+                                        flex cursor-default select-none items-center 
+                                        rounded-sm px-2 py-1.5 text-sm outline-none 
+                                        transition-colors focus:bg-accent 
+                                        focus:text-accent-foreground 
+                                        data-[disabled]:pointer-events-none 
+                                        data-[disabled]:opacity-50`}
+                          variant="ghost"
+                        >
+                          {loadingUpdateFaculty && (
+                            <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                          )}
+                          Cập nhật
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <UpdateForm
+                          row={row}
+                          faculties={faculties}
+                          setHandled={setHandled}
+                          setFaculties={setFaculties}
+                          loadingUpdateFaculty={loadingUpdateFaculty}
+                          setLoadingUpdateFaculty={setLoadingUpdateFaculty}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    <DropdownMenuItem onClick={() => deleteFaculty(row)}>
+                      Xoá
+                    </DropdownMenuItem>
+                  </>,
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1004,86 +1020,92 @@ export default function Faculties() {
                 Xuất file Excel
               </span>
             </Button>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-7 gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Thêm khoa
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <DialogHeader>
-                      <DialogTitle>Thêm khoa</DialogTitle>
-                      <DialogDescription>
-                        Thêm khoa vào hệ thống các khoa của trường
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="identifier_id"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Mã khoa</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Mã khoa"
-                                  type="text"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Tên khoa</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Tên khoa"
-                                  type="text"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="desc"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Mô tả</FormLabel>
-                              <FormControl>
-                                <Textarea placeholder="Mô tả" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit">Thêm</Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+            {
+              !verifyRole(
+                user?.roles,
+                Role.ADMIN,
+                <Dialog open={open} onOpenChange={setOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="h-7 gap-1">
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Thêm khoa
+                      </span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)}>
+                        <DialogHeader>
+                          <DialogTitle>Thêm khoa</DialogTitle>
+                          <DialogDescription>
+                            Thêm khoa vào hệ thống các khoa của trường
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid">
+                            <FormField
+                              control={form.control}
+                              name="identifier_id"
+                              render={({ field }) => (
+                                <FormItem className="grid">
+                                  <FormLabel htmlFor="text">Mã khoa</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Mã khoa"
+                                      type="text"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="grid">
+                            <FormField
+                              control={form.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem className="grid">
+                                  <FormLabel htmlFor="text">Tên khoa</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Tên khoa"
+                                      type="text"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="grid">
+                            <FormField
+                              control={form.control}
+                              name="desc"
+                              render={({ field }) => (
+                                <FormItem className="grid">
+                                  <FormLabel htmlFor="text">Mô tả</FormLabel>
+                                  <FormControl>
+                                    <Textarea placeholder="Mô tả" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button type="submit">Thêm</Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>,
+              )
+            }
           </div>
         </div>
         <TabsContent value="all">

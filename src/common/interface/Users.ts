@@ -6,5 +6,6 @@ export default interface Users {
   email: string;
   image: string;
   avatar: string;
+  roles: string;
   gender: GenderEnum;
 }

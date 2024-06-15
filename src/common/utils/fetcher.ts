@@ -25,9 +25,15 @@ api.interceptors.request.use(async (config) => {
   const session: any = await getSession();
 
   // Check token is valid
-  if (session?.token) {
+  if (session?.token && session?.user) {
+    // Add token to headers
     config.headers['Authorization'] = `Bearer ${session.token?.accessToken}`;
+
+    // Add roles to header
+    config.headers['roles'] = `${session.user?.roles}`;
+
   }
+  // Return
   return config;
 });
 

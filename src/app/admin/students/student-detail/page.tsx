@@ -416,11 +416,12 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
             });
 
             // Check upload
-            if (upload?.ok) {
+            if (upload?.ok && upload?.data?.length > 0) {
+
               // Fetch
               const updatedWithFile = await fetchUpdate({
                 ...values,
-                file: upload.data.filename,
+                file: upload.data[0].filename,
               });
 
               // Check request
@@ -1146,7 +1147,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
     const fetch = await fetcher({
       method: 'GET',
       url: '/student-papers-and-ceritificate/page',
-      payload: { page },
+      payload: { page, student_id: studentData?.id },
     });
 
     // Check success

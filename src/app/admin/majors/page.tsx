@@ -107,7 +107,14 @@ import { Separator } from '@/components/ui/separator';
 import { MajorsDetail } from '@/common/types/majors/detail';
 import { PageConfig } from '@/common/types/page.config.type';
 import TableSearch from '@/components/custom/table.search';
-import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
+import {
+  errors,
+  getCommonPinningStyles,
+  verifyRole,
+} from '@/common/utils/ultils';
+import { useSession } from 'next-auth/react';
+import Users from '@/common/interface/Users';
+import { Role } from '@/common/enum/role.enum';
 
 const IdToColumn = (key: string) => {
   switch (key) {
@@ -484,6 +491,9 @@ export default function Majors() {
 
   // Page
   const [page, setPage] = useState<number>(1);
+
+  // User data
+  const user = useSession()?.data?.user as Users;
 
   // Page config
   const [pageConfig, setPageConfig] = useState<PageConfig | null>(null);
@@ -905,37 +915,46 @@ export default function Majors() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      disabled={loadingUpdateMajors}
-                      className={`w-full font-normal justify-start relative 
+                {verifyRole(
+                  user?.roles,
+                  Role.ADMIN,
+                  <>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          disabled={loadingUpdateMajors}
+                          className={`w-full font-normal justify-start relative 
                                         flex cursor-default select-none items-center 
                                         rounded-sm px-2 py-1.5 text-sm outline-none 
                                         transition-colors focus:bg-accent 
                                         focus:text-accent-foreground 
                                         data-[disabled]:pointer-events-none 
                                         data-[disabled]:opacity-50`}
-                      variant="ghost"
-                    >
-                      {loadingUpdateMajors && (
-                        <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Cập nhật
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <UpdateForm
-                      row={row}
-                      majors={majors}
-                      setMajors={setMajors}
-                      setHandled={setHandled}
-                      facultySelect={facultySelect}
-                      loadingUpdateMajors={loadingUpdateMajors}
-                      setLoadingUpdateMajors={setLoadingUpdateMajors}
-                    />
-                  </DialogContent>
-                </Dialog>
+                          variant="ghost"
+                        >
+                          {loadingUpdateMajors && (
+                            <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                          )}
+                          Cập nhật
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <UpdateForm
+                          row={row}
+                          majors={majors}
+                          setMajors={setMajors}
+                          setHandled={setHandled}
+                          facultySelect={facultySelect}
+                          loadingUpdateMajors={loadingUpdateMajors}
+                          setLoadingUpdateMajors={setLoadingUpdateMajors}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    <DropdownMenuItem onClick={() => deleteMajors(row)}>
+                      Xoá
+                    </DropdownMenuItem>
+                  </>,
+                )}
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button
@@ -955,9 +974,6 @@ export default function Majors() {
                     <ViewDetail id={row.original.id} />
                   </DialogContent>
                 </Dialog>
-                <DropdownMenuItem onClick={() => deleteMajors(row)}>
-                  Xoá
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1100,120 +1116,126 @@ export default function Majors() {
                 Xuất file Excel
               </span>
             </Button>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-7 gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Thêm ngành học
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <DialogHeader>
-                      <DialogTitle>Thêm ngành học</DialogTitle>
-                      <DialogDescription>
-                        Thêm ngành học vào hệ thống của trường
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="identifier_id"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Mã ngành học</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Mã ngành học"
-                                  type="text"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="faculty_id"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Khoa</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
+            {verifyRole(
+              user?.roles,
+              Role.ADMIN,
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-7 gap-1">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Thêm ngành học
+                    </span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                      <DialogHeader>
+                        <DialogTitle>Thêm ngành học</DialogTitle>
+                        <DialogDescription>
+                          Thêm ngành học vào hệ thống của trường
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="identifier_id"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">
+                                  Mã ngành học
+                                </FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Chọn khoa" />
-                                  </SelectTrigger>
+                                  <Input
+                                    placeholder="Mã ngành học"
+                                    type="text"
+                                    {...field}
+                                  />
                                 </FormControl>
-                                <SelectContent>
-                                  {facultySelect.map((item: Faculty) => (
-                                    <SelectItem
-                                      key={item.id}
-                                      value={JSON.stringify(item)}
-                                    >
-                                      {item.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="faculty_id"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Khoa</FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Chọn khoa" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {facultySelect.map((item: Faculty) => (
+                                      <SelectItem
+                                        key={item.id}
+                                        value={JSON.stringify(item)}
+                                      >
+                                        {item.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">
+                                  Tên ngành học
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Tên ngành học"
+                                    type="text"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="desc"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Mô tả</FormLabel>
+                                <FormControl>
+                                  <Textarea placeholder="Mô tả" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">
-                                Tên ngành học
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Tên ngành học"
-                                  type="text"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="desc"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Mô tả</FormLabel>
-                              <FormControl>
-                                <Textarea placeholder="Mô tả" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit">Thêm</Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+                      <DialogFooter>
+                        <Button type="submit">Thêm</Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>,
+            )}
           </div>
         </div>
         <TabsContent value="all">

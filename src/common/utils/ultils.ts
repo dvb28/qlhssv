@@ -1,5 +1,6 @@
 import { Column } from '@tanstack/react-table';
 import { CSSProperties } from 'react';
+import { Role } from '../enum/role.enum';
 
 export const getCommonPinningStyles = (column: Column<any>): CSSProperties => {
   const isPinned = column.getIsPinned();
@@ -27,3 +28,13 @@ export const errors = (toast: any, error: string[] | string) => {
     return error;
   }
 };
+
+
+// Use Role
+export const verifyRole = (roles: string, role: Role, element: any) => {
+     // Check role
+     if(!roles) return false;
+
+     // Check is route match
+     return roles?.split(' ')?.includes(role) ? element : null;
+}
