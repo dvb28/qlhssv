@@ -47,7 +47,7 @@ export default function User({}: Props) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           {data?.user?.fullname ? (
-            <div className="flex md:grow-0 gap-3 cursor-pointer hover:bg-slate-100 py-1.5 px-2 rounded-md">
+            <div className="flex md:grow-0 gap-3 cursor-pointer hover:bg-accent py-1.5 px-2 rounded-md">
               <div className="flex items-end flex-col">
                 <p className="text-foreground text-[13px] text-nowrap font-[500]">
                   {data?.user && data?.user?.fullname}

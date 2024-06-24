@@ -35,6 +35,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               // Stop default
               e.preventDefault();
 
+
               // On hide
               onHide();
             }}>

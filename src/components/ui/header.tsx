@@ -28,7 +28,7 @@ const breadcrumb = (path: string) => {
   // Check by switch
   switch (path) {
     case 'students':
-      return <Link href={`/admin/students`}>Sinh viên</Link>;
+      return <Link href={`/admin/students`}>Hồ sơ sinh viên</Link>;
     case 'classes':
       return <Link href={`/admin/classes`}>Lớp học</Link>;
     case 'faculties':
@@ -42,9 +42,11 @@ const breadcrumb = (path: string) => {
     case 'appearance':
       return <Link href={`/admin/setting/appearance`}>Giao diện</Link>;
     case 'student-add':
-      return <Link href={`/admin/students/student-add`}>Thêm sinh viên</Link>;
+      return <Link href={`/admin/students/student-add`}>Thêm hồ sơ sinh viên</Link>;
     case 'student-detail':
       return <Link href={`/admin/students/student-detail`}>Thông tin</Link>;
+    case 'users':
+      return <Link href={`/admin/users`}>Quản lý người dùng</Link>;
     case 'admin':
       return <Link href={`/admin/dashboard`}>Trang chủ</Link>;
     default:

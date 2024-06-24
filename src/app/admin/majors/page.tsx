@@ -777,6 +777,7 @@ export default function Majors() {
       id: 'select',
       header: ({ table }) => (
         <Checkbox
+          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
           checked={
             table.getIsAllPageRowsSelected() ||
             (table.getIsSomePageRowsSelected() && 'indeterminate')
@@ -787,9 +788,10 @@ export default function Majors() {
       ),
       cell: ({ row }) => (
         <Checkbox
+          aria-label="Select row"
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
         />
       ),
       enableSorting: false,
@@ -917,7 +919,7 @@ export default function Majors() {
                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
                 {verifyRole(
                   user?.roles,
-                  Role.ADMIN,
+                  [Role.ADMIN],
                   <>
                     <Dialog>
                       <DialogTrigger asChild>
@@ -1037,34 +1039,45 @@ export default function Majors() {
             <TabsTrigger value="all">EAUT</TabsTrigger>
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
-            <AlertDialog onOpenChange={setDeleteRowDilog} open={deleteRowDilog}>
-              <AlertDialogTrigger asChild>
-                {rowSelection && Object.keys(rowSelection).length > 0 && (
-                  <Button size="sm" variant="destructive" className="h-7 gap-1">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Xoá ngành học
-                    </span>
-                  </Button>
-                )}
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Bạn có chắc muốn xoá các ngành học đã chọn?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Khi đồng ý sẽ xoá các ngành học đã chọn trong bảng.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Huỷ</AlertDialogCancel>
-                  <AlertDialogAction onClick={rowDelete}>
-                    Đồng ý
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {verifyRole(
+              user?.roles,
+              [Role.ADMIN],
+              <AlertDialog
+                onOpenChange={setDeleteRowDilog}
+                open={deleteRowDilog}
+              >
+                <AlertDialogTrigger asChild>
+                  {rowSelection && Object.keys(rowSelection).length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-7 gap-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Xoá ngành học
+                      </span>
+                    </Button>
+                  )}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Bạn có chắc muốn xoá các ngành học đã chọn?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Khi đồng ý sẽ xoá các ngành học đã chọn trong bảng.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                    <AlertDialogAction onClick={rowDelete}>
+                      Đồng ý
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>,
+            )}
             <TableSearch
               columns={columns}
               title="Tìm kiếm ngành"
@@ -1118,7 +1131,7 @@ export default function Majors() {
             </Button>
             {verifyRole(
               user?.roles,
-              Role.ADMIN,
+              [Role.ADMIN],
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-7 gap-1">

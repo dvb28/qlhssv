@@ -9,6 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -61,6 +62,7 @@ const UI: FC<PropsUI> = ({ theme, setTheme }: PropsUI) => {
               <div className="relative w-max">
                 <FormControl>
                   <select
+                    disabled
                     className={cn(
                       buttonVariants({ variant: 'outline' }),
                       'w-[200px] appearance-none font-normal',
@@ -74,6 +76,9 @@ const UI: FC<PropsUI> = ({ theme, setTheme }: PropsUI) => {
                 </FormControl>
                 <ChevronDownIcon className="absolute right-3 top-2.5 h-4 w-4 opacity-50" />
               </div>
+              <FormDescription>
+                Chức năng này hiện chưa hoạt động
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -114,5 +119,5 @@ export function AppearanceForm() {
   const { setTheme, theme } = useTheme();
 
   // Return
-  return <UI theme={theme} setTheme={setTheme} />
+  return <UI theme={theme} setTheme={setTheme} />;
 }

@@ -8,7 +8,6 @@ export const getCommonPinningStyles = (column: Column<any>): CSSProperties => {
     left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
     right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
     position: isPinned ? 'sticky' : 'relative',
-    backgroundColor: 'white',
     zIndex: isPinned ? 1 : 0,
   };
 };
@@ -29,12 +28,27 @@ export const errors = (toast: any, error: string[] | string) => {
   }
 };
 
-
 // Use Role
-export const verifyRole = (roles: string, role: Role, element: any) => {
-     // Check role
-     if(!roles) return false;
+export const verifyRole = (
+  roles: string,
+  role: Role | Role[],
+  element: any,
+) => {
+  // Check role
+  if (!roles) return false;
 
-     // Check is route match
-     return roles?.split(' ')?.includes(role) ? element : null;
+  // Roles Array
+  const roles_array = roles.split(' ');
+
+  // Loop
+  for (let i = 0; i < roles_array.length; i++) {
+    // Check
+    if (role.includes(roles_array[i] as Role)) {
+      // Return
+      return element;
+    }
+
+    // Check is route not match
+    if (i === roles_array.length - 1) return null;
 }
+};

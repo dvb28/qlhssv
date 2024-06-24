@@ -1,4 +1,4 @@
-import { GenderEnum } from "../enum/gender.enum";
+import { GenderEnum } from '../enum/gender.enum';
 
 export default interface Users {
   id: string;
@@ -8,4 +8,6 @@ export default interface Users {
   avatar: string;
   roles: string;
   gender: GenderEnum;
+  created_at: Date;
+  updated_at: Date;
 }

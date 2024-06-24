@@ -64,7 +64,7 @@ import {
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
 import { fetcher } from '@/common/utils/fetcher';
-import { FC, Fragment, MouseEvent, useEffect, useState } from 'react';
+import { FC, MouseEvent, useEffect, useState } from 'react';
 import Empty from '@/components/ui/empty';
 import { format } from 'date-fns';
 import { CaretSortIcon } from '@radix-ui/react-icons';
@@ -94,24 +94,30 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import type Course from '@/common/interface/Course';
-import { Separator } from '@radix-ui/react-dropdown-menu';
-import { CourseDetail } from '@/common/types/course/detail';
 import { PageConfig } from '@/common/types/page.config.type';
 import { errors, verifyRole } from '@/common/utils/ultils';
 import TableSearch from '@/components/custom/table.search';
+import type Users from '@/common/interface/Users';
+import { Role, RoleToString } from '@/common/enum/role.enum';
+import { Badge } from '@/components/ui/badge';
+import { Response } from '@/common/types/response.type';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { GenderEnum } from '@/common/enum/gender.enum';
 import { useSession } from 'next-auth/react';
-import Users from '@/common/interface/Users';
-import { Role } from '@/common/enum/role.enum';
 
-// Hàm chuyển đổi từ viết tắt của cột thành tiếng việt
 const IdToColumn = (key: string) => {
   switch (key) {
     case 'name':
-      return 'Khoá học số';
+      return 'Tên tài khoản';
     case 'desc':
-      return 'Mô tả';
-    case 'is_graduate':
+      return 'Email';
+    case 'roles':
       return 'Đã tốt nghiệp';
     case 'created_at':
       return 'Ngày tạo';
@@ -120,55 +126,173 @@ const IdToColumn = (key: string) => {
   }
 };
 
+const columns: ColumnDef<Users>[] = [
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate')
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: 'fullname',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Tên tài khoản
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div className="">{row.getValue('fullname')}</div>,
+  },
+  {
+    accessorKey: 'email',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Email
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div className="">{row.getValue('email')}</div>,
+  },
+  {
+    accessorKey: 'roles',
+    header: () => (
+      <Button className="w-full" variant="ghost">
+        <div className="flex justify-start flex-1 w-100">
+          <p>Quyền</p>
+        </div>
+      </Button>
+    ),
+    cell: ({ row }) => {
+      // Roles to split
+      const roles: string[] = row.original.roles?.split(' ');
+
+      // Return
+      return (
+        <div className="">
+          {roles?.map((role: string) => {
+            // Data
+            const data: any = RoleToString(role);
+
+            // Return
+            return (
+              <Badge variant={data.variant} key={role}>
+                {data.label}
+              </Badge>
+            );
+          })}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'created_at',
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
+        Ngày tạo
+        <CaretSortIcon className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="text-left">
+          {format(row.getValue('created_at'), 'dd/MM/yyyy')}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'updated_at',
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+      >
+        Lần cập nhật gần nhất
+        <CaretSortIcon className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="text-left">
+          {format(row.getValue('updated_at'), 'dd/MM/yyyy')}
+        </div>
+      );
+    },
+  },
+];
+
 // Validate Schema
-const courseSchema = z.object({
-  name: z.string({ required_error: 'Trường này không được trống' }).min(1, {
-    message: 'Số của khoá học là bắt buộc',
+const usersSchema = z.object({
+  roles: z.string({
+    required_error: 'Vui lòng chọn quyền hạn.',
   }),
-  is_graduate: z.boolean({
-    required_error: 'Trường này không được trống',
-  }),
-  desc: z.any(),
 });
 
 type UpdateFormType = {
-  row: Row<Course>;
-  course: Course[];
+  row: Row<Users>;
+  users: Users[];
   setHandled: React.Dispatch<React.SetStateAction<any>>;
-  setOpenUpdateCourse: React.Dispatch<React.SetStateAction<boolean>>;
-  setCourse: React.Dispatch<React.SetStateAction<Course[]>>;
+  setOpenUpdateUsers: React.Dispatch<React.SetStateAction<boolean>>;
+  setUsers: React.Dispatch<React.SetStateAction<Users[]>>;
 };
 
 const UpdateForm: FC<UpdateFormType> = ({
   row,
-  course,
-  setCourse,
+  users,
+  setUsers,
   setHandled,
-  setOpenUpdateCourse,
+  setOpenUpdateUsers,
 }) => {
   // Form update faculty
-  const formUpdate = useForm<z.infer<typeof courseSchema>>({
-    resolver: zodResolver(courseSchema),
+  const formUpdate = useForm<z.infer<typeof usersSchema>>({
+    resolver: zodResolver(usersSchema),
     defaultValues: {
-      name: row.original.name,
-      desc: row.original.desc,
-      is_graduate: row.original.is_graduate,
+      roles: row.original.roles,
     },
   });
 
   // Update
-  function onUpdate(values: z.infer<typeof courseSchema>) {
+  function onUpdate(values: z.infer<typeof usersSchema>) {
     // Close dialog
-    setOpenUpdateCourse(false);
+    setOpenUpdateUsers(false);
 
     // Promise
-    const promise = (): Promise<Course> =>
+    const promise = (): Promise<Users> =>
       new Promise(async (resolve, reject) =>
         setTimeout(async () => {
           // Fetch
-          const created = await fetcher({
+          const updated = await fetcher({
             method: 'PUT',
-            url: '/course/update',
+            url: '/users/update-role',
             payload: {
               ...values,
               id: row.original.id,
@@ -176,16 +300,16 @@ const UpdateForm: FC<UpdateFormType> = ({
           });
 
           // Check request
-          created?.ok ? resolve(created?.data) : reject(created?.message);
+          updated?.ok ? resolve(updated?.data) : reject(updated?.message);
         }, 1000),
       );
 
     // Toast
     toast.promise(promise, {
-      loading: 'Đang cập nhật thông tin khoá học, vui lòng đợi...',
-      success: (data: Course) => {
+      loading: 'Đang sửa quyền tài khoản, vui lòng đợi...',
+      success: (data: Users) => {
         // Update data
-        const updatedItems = course.map((item: Course, i: number) => {
+        const updatedItems = users.map((item: Users, i: number) => {
           // Check row index
           if (i === row.index) return data;
 
@@ -197,10 +321,10 @@ const UpdateForm: FC<UpdateFormType> = ({
         setHandled(['UPDATE', row.index, data]);
 
         // Set data
-        setCourse(updatedItems);
+        setUsers(updatedItems);
 
         // Show message
-        return 'Cập nhật thông tin khoá học thành công';
+        return 'Sửa quyền tài khoản thành công';
       },
       error: (message: string[]) => errors(toast, message),
       finally: () => {
@@ -214,64 +338,36 @@ const UpdateForm: FC<UpdateFormType> = ({
     <Form {...formUpdate}>
       <form onSubmit={formUpdate.handleSubmit(onUpdate)}>
         <DialogHeader>
-          <DialogTitle>Cập nhật thông tin của khoá học</DialogTitle>
+          <DialogTitle>Cập nhật thông tin của tài khoản</DialogTitle>
           <DialogDescription>
-            Cập nhật thông tin khoá học {row.original.name}
+            Cập nhật thông tin tài khoản {row.original.fullname}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid">
-            <FormField
-              control={formUpdate.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="grid">
-                  <FormLabel htmlFor="text">Số của khoá học</FormLabel>
+          <FormField
+            control={formUpdate.control}
+            name="roles"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="text">Quyền</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
                   <FormControl>
-                    <Input
-                      placeholder="Số của khoá học"
-                      type="text"
-                      {...field}
-                    />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn quyền" />
+                    </SelectTrigger>
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="flex">
-            <FormField
-              control={formUpdate.control}
-              name="is_graduate"
-              render={({ field }) => (
-                <FormItem className="flex items-center space-y-0 gap-3">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel>Đã tốt nghiệp</FormLabel>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="grid">
-            <FormField
-              control={formUpdate.control}
-              name="desc"
-              render={({ field }) => (
-                <FormItem className="grid">
-                  <FormLabel htmlFor="text">Mô tả</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Mô tả" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+                  <SelectContent>
+                    <SelectItem value={Role.MANAGER}>Quản lý</SelectItem>
+                    <SelectItem value={Role.USER}>Người dùng</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <DialogFooter>
           <Button type="submit">Cập nhật</Button>
@@ -281,134 +377,66 @@ const UpdateForm: FC<UpdateFormType> = ({
   );
 };
 
-type ViewDetailType = {
-  id: string;
-};
+// Form Schema
+const formSchema = z
+  .object({
+    email: z
+      .string({
+        required_error: 'Trường này không được trống.',
+      })
+      .email({
+        message: 'Email đã nhập không hợp lệ.',
+      }),
+    roles: z.string({
+      required_error: 'Vui lòng chọn quyền hạn.',
+    }),
+    password: z
+      .string({
+        required_error: 'Trường này không được trống.',
+      })
+      .min(8, {
+        message: 'Mật khẩu phải trên 8 ký tự.',
+      }),
+    confirm: z
+      .string({
+        required_error: 'Trường này không được trống.',
+      })
+      .min(8, {
+        message: 'Mật khẩu phải trên 8 ký tự.',
+      }),
+    fullname: z.string().min(10, {
+      message: 'Họ và tên phải tên trên 10 ký tự.',
+    }),
+    gender: z.string({
+      required_error: 'Vui lòng chọn giới tính.',
+    }),
+    phone: z
+      .string({
+        required_error: 'Trường này không được trống.',
+      })
+      .min(10, {
+        message: 'Vui lòng nhập số điện thoại.',
+      })
+      .max(10, {
+        message: 'Số điện thoại chỉ có 10 số.',
+      }),
+  })
+  .refine((data) => data.password === data.confirm, {
+    message: 'Mật khẩu không trùng khớp',
+    path: ['confirm'],
+  });
 
-const ViewDetail: FC<ViewDetailType> = ({ id }) => {
-  // Faculty detail
-  const [detail, setDetail] = useState<CourseDetail | null>(null);
-
-  // Loading
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // Effect load detail
-  useEffect(() => {
-    (async () => {
-      // Fetch
-      const loaded = await fetcher({
-        method: 'GET',
-        url: '/course/statistical',
-        payload: { id },
-      });
-
-      // Delay
-      setTimeout(() => {
-        // Disable loading
-        setIsLoading(false);
-
-        // Check sussess
-        if (loaded?.ok) setDetail(loaded?.data);
-      }, 1000);
-    })();
-  }, [id]);
-
-  // Return
-  return (
-    <Fragment>
-      <DialogHeader>
-        <DialogTitle>Chi tiết khoá học</DialogTitle>
-        <DialogDescription>
-          Xem thông tin chi tiết, và thống kê của khoá học
-        </DialogDescription>
-      </DialogHeader>
-      {!isLoading ? (
-        detail && (
-          <Fragment>
-            <div>
-              <p className="text-sm font-medium">Thống kê</p>
-              <div className="grid gap-4 py-4 grid-cols-2">
-                <div className="flex gap-5 flex-col text-[15px] text-muted-foreground">
-                  <p className="text-sm">Số lượng lớp học:</p>
-                </div>
-                <div className="flex gap-5 flex-col items-end text-[15px]">
-                  <p>{detail.classes} lớp học</p>
-                </div>
-              </div>
-            </div>
-            <Separator className="my-1" />
-            <div>
-              <p className="text-sm font-medium">Thông tin</p>
-              <div className="grid gap-4 py-4 grid-cols-2">
-                <div className="flex gap-5 flex-col text-[15px] text-muted-foreground">
-                  <p className="text-sm">Số khoá học:</p>
-                  <p className="text-sm">Ngày tạo:</p>
-                  <p className="text-sm">Lần cập nhật gần nhất:</p>
-                </div>
-                <div className="flex gap-5 flex-col items-end text-[15px]">
-                  <p>{detail.name}</p>
-                  <p>{format(detail.created_at, 'dd/MM/yyyy')}</p>
-                  <p>{format(detail.updated_at, 'dd/MM/yyyy')}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium">Mô tả</p>
-                <p className="text-sm text-muted-foreground">
-                  {detail?.desc
-                    ? detail.desc
-                    : `Không có mô tả nào cho khoa ${detail.name}`}
-                </p>
-              </div>
-            </div>
-          </Fragment>
-        )
-      ) : (
-        <div>
-          <Fragment>
-            <div>
-              <Skeleton className="w-[40px] h-[20px]" />
-              <div className="grid gap-4 py-4 grid-cols-2">
-                <div className="flex gap-5 flex-col text-[15px] text-muted-foreground">
-                  <Skeleton className="w-full h-[20px]" />
-                </div>
-                <div className="flex gap-5 flex-col items-end text-[15px]">
-                  <Skeleton className="w-full h-[20px]" />
-                </div>
-              </div>
-            </div>
-            <Separator className="my-5" />
-            <div>
-              <Skeleton className="w-[40px] h-[20px]" />
-              <div className="grid gap-4 py-4 grid-cols-2">
-                <div className="flex gap-5 flex-col text-[15px] text-muted-foreground">
-                  <Skeleton className="w-full h-[20px]" />
-                  <Skeleton className="w-full h-[20px]" />
-                  <Skeleton className="w-full h-[20px]" />
-                  <Skeleton className="w-full h-[20px]" />
-                </div>
-                <div className="flex gap-5 flex-col items-end text-[15px]">
-                  <Skeleton className="w-full h-[20px]" />
-                  <Skeleton className="w-full h-[20px]" />
-                  <Skeleton className="w-full h-[20px]" />
-                  <Skeleton className="w-full h-[20px]" />
-                </div>
-              </div>
-            </div>
-          </Fragment>
-        </div>
-      )}
-    </Fragment>
-  );
-};
-
-export default function Course() {
-  // Form
-  const form = useForm<z.infer<typeof courseSchema>>({
-    resolver: zodResolver(courseSchema),
+export default function Users() {
+  // 1. Define your form.
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
-      desc: '',
-      is_graduate: false,
+      email: '',
+      password: '',
+      fullname: '',
+      confirm: '',
+      phone: '',
+      roles: Role.USER,
     },
   });
 
@@ -431,19 +459,19 @@ export default function Course() {
   const [isPageChange, setIsPageChange] = useState<boolean>(false);
 
   // Dialog Create
-  const [open, setOpen] = useState<boolean>(false);
-
-  // User
-  const user: Users = useSession()?.data?.user as Users;
-
-  // Dialog Create
-  const [openUpdateCourse, setOpenUpdateCourse] = useState<boolean>(false);
+  const [openUpdateUsers, setOpenUpdateUsers] = useState<boolean>(false);
 
   // Faculty list
-  const [course, setCourse] = useState<Course[]>([]);
+  const [users, setUsers] = useState<Users[]>([]);
 
   // Table sorting
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  // User
+  const user = useSession()?.data?.user as Users;
+
+  // Dialog Create
+  const [open, setOpen] = useState<boolean>(false);
 
   // Table Filters
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -454,125 +482,9 @@ export default function Course() {
   // Table Selection
   const [rowSelection, setRowSelection] = useState({});
 
-  const columns: ColumnDef<Course>[] = [
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
-          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: 'name',
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Khoá học số
-            <CaretSortIcon className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
-      cell: ({ row }) => <div className="">{row.getValue('name')}</div>,
-    },
-    {
-      accessorKey: 'is_graduate',
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Đã tốt nghiệp
-            <CaretSortIcon className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
-      cell: ({ row }) => <Checkbox checked={row.getValue('is_graduate')} />,
-    },
-    {
-      accessorKey: 'desc',
-      header: () => (
-        <Button className="w-full" variant="ghost">
-          <div className="flex justify-start flex-1 w-100">
-            <p>Mô tả</p>
-          </div>
-        </Button>
-      ),
-      cell: ({ row }) => {
-        // Des
-        const desc: string = row.getValue('desc');
-
-        // Return
-        return (
-          <div className="text-left">
-            {desc?.trim() !== '' ? desc : 'Không có mô tả nào cho khoá học'}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'created_at',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Ngày tạo
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        return (
-          <div className="text-left">
-            {format(row.getValue('created_at'), 'dd/MM/yyyy')}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'updated_at',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Lần cập nhật gần nhất
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        return (
-          <div className="text-left">
-            {format(row.getValue('updated_at'), 'dd/MM/yyyy')}
-          </div>
-        );
-      },
-    },
-  ];
-
   // Table
   const table = useReactTable({
-    data: course,
+    data: users,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -590,57 +502,45 @@ export default function Course() {
     },
   });
 
-  // Row delete
-  const rowDelete = (e: MouseEvent) => {
-    // Stop default
-    e.preventDefault();
-
-    // Delete course
-    deletesCourse(e, table.getSelectedRowModel().flatRows);
-
-    // Close dialog
-    setDeleteRowDilog(false);
-  };
-
   // Submit
-  function onSubmit(values: z.infer<typeof courseSchema>) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     // Close dialog
     setOpen(false);
 
     // Promise
-    const promise = (): Promise<Course> =>
+    const promise = (): Promise<Users> =>
       new Promise(async (resolve, reject) =>
         setTimeout(async () => {
-          // Fetch
-          const created = await fetcher({
+          // Fetcher
+          const added: Response = await fetcher({
             method: 'POST',
-            url: '/course/create',
+            url: '/users/add',
             payload: {
               ...values,
-              name: values.name.trim(),
+              avatar: '',
             },
           });
 
           // Check request
-          created?.ok ? resolve(created?.data) : reject(created?.message);
+          added?.ok ? resolve(added?.data) : reject(added?.message);
         }, 1000),
       );
 
     // Toast
     toast.promise(promise, {
-      loading: 'Đang thêm khoá học, vui lòng đợi...',
-      success: (data: Course) => {
+      loading: 'Đang thêm tài khoản, vui lòng đợi...',
+      success: (data: Users) => {
         // Check
-        if (course.length === 10 && pageConfig) {
+        if (users.length === 10 && pageConfig) {
           // Add page
           setPageConfig({ ...pageConfig, pages: pageConfig?.pages + 1 });
         }
 
         // Add new data
-        setCourse([...course, data]);
+        setUsers([...users, data]);
 
         // Show message
-        return 'Thêm khoá học thành công';
+        return 'Thêm tài khoản thành công';
       },
       error: (message: string[]) => errors(toast, message),
       finally: () => {
@@ -650,21 +550,33 @@ export default function Course() {
     });
   }
 
+  // Row delete
+  const rowDelete = (e: MouseEvent) => {
+    // Stop default
+    e.preventDefault();
+
+    // Delete users
+    deletesUsers(e, table.getSelectedRowModel().flatRows);
+
+    // Close dialog
+    setDeleteRowDilog(false);
+  };
+
   // Next page
   const nextPage = () => setPage(page + 1);
 
   // Next page
   const previousPage = () => setPage(page - 1);
 
-  // Load course with page
-  const loadCourse = async (page: number) => {
+  // Load users with page
+  const loadUsers = async (page: number) => {
     // Enable loading
     setIsLoading(true);
 
     // Fetch
     const fetch = await fetcher({
       method: 'GET',
-      url: '/course/page',
+      url: '/users/page',
       payload: { page },
     });
 
@@ -674,7 +586,7 @@ export default function Course() {
       const { data, ...pageConfig } = fetch.data;
 
       // Set data to faculty
-      setCourse(data);
+      setUsers(data);
 
       // Set page config
       setPageConfig(pageConfig);
@@ -688,7 +600,7 @@ export default function Course() {
     // Fetch
     const fetch = await fetcher({
       method: 'DELETE',
-      url: `/course/delete`,
+      url: `/users/delete`,
       payload: { ids },
     });
 
@@ -699,7 +611,7 @@ export default function Course() {
     return fetch?.ok;
   };
 
-  const deleteCourse = async (row: Row<Course>) => {
+  const deleteUsers = async (row: Row<Users>) => {
     // Promise
     const promise = (): Promise<void> => {
       // Promise
@@ -716,10 +628,10 @@ export default function Course() {
 
     // Toasts
     toast.promise(promise, {
-      loading: `Đang xóa khoá học ${row.original.name}, vui lòng đợi...`,
+      loading: `Đang xóa tài khoản ${row.original.fullname}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
-        if (course.length === 1 && page !== 1) {
+        if (users.length === 1 && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -728,7 +640,7 @@ export default function Course() {
         }
 
         // Show message
-        return `Xóa khoá học ${row.original.name} thành công`;
+        return `Xóa tài khoản ${row.original.fullname} thành công`;
       },
       error: (message: string[]) => errors(toast, message),
     });
@@ -739,7 +651,7 @@ export default function Course() {
     // Fetch
     const fetch = await fetcher({
       method: 'GET',
-      url: '/course/all',
+      url: '/users/all',
     });
 
     // Check success
@@ -749,17 +661,17 @@ export default function Course() {
 
       // Thêm dữ liệu từ JSON vào worksheet
       worksheet.columns = [
-        { header: 'Khoá học số', key: 'name' },
+        { header: 'tài khoản số', key: 'name' },
         { header: 'Mô tả', key: 'desc' },
         { header: 'Ngày tạo', key: 'created_at' },
         { header: 'Ngày cập nhật gần nhất', key: 'updated_at' },
       ];
 
       // Map data
-      fetch?.data.forEach((item: Course) => {
+      fetch?.data.forEach((item: Users) => {
         worksheet.addRow({
-          name: item.name,
-          desc: item.desc,
+          fullname: item.fullname,
+          email: item.email,
           created_at: format(item.created_at, 'dd/MM/yyyy'),
           updated_at: format(item.updated_at, 'dd/MM/yyyy'),
         });
@@ -770,13 +682,13 @@ export default function Course() {
         const blob = new Blob([buffer], {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         });
-        saveAs(blob, 'course.xlsx');
+        saveAs(blob, 'users.xlsx');
       });
     }
   };
 
-  // Delete course (Multiple)
-  const deletesCourse = async (e: MouseEvent, rows: Row<Course>[]) => {
+  // Delete users (Multiple)
+  const deletesUsers = async (e: MouseEvent, rows: Row<Users>[]) => {
     // Stop Event
     e.preventDefault();
 
@@ -799,13 +711,13 @@ export default function Course() {
 
     // Toasts
     toast.promise(promise, {
-      loading: 'Đang xóa các khoá học, vui lòng đợi...',
+      loading: 'Đang xóa các tài khoản, vui lòng đợi...',
       success: () => {
         // Reset selection
         setRowSelection({});
 
         // Check deletes length
-        if (course.length === deletes.length && page !== 1) {
+        if (users.length === deletes.length && page !== 1) {
           // Load previous page
           setPage(page - 1);
         } else {
@@ -814,15 +726,15 @@ export default function Course() {
         }
 
         // Show message
-        return 'Xóa các khoá học đã chọn thành công';
+        return 'Xóa các tài khoản đã chọn thành công';
       },
       error: (message: string[]) => errors(toast, message),
     });
   };
 
-  // Effect load course
+  // Effect load users
   useEffect(() => {
-    (async () => await loadCourse(page))();
+    (async () => await loadUsers(page))();
   }, [page, isPageChange]);
 
   // Return
@@ -834,41 +746,52 @@ export default function Course() {
             <TabsTrigger value="all">EAUT</TabsTrigger>
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
-            <AlertDialog onOpenChange={setDeleteRowDilog} open={deleteRowDilog}>
-              <AlertDialogTrigger asChild>
-                {rowSelection && Object.keys(rowSelection).length > 0 && (
-                  <Button size="sm" variant="destructive" className="h-7 gap-1">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Xoá khoá học
-                    </span>
-                  </Button>
-                )}
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Bạn có chắc muốn xoá các khoá học đã chọn?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Khi đồng ý sẽ xoá các khoá học đã chọn trong bảng.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Huỷ</AlertDialogCancel>
-                  <AlertDialogAction onClick={rowDelete}>
-                    Đồng ý
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {verifyRole(
+              user?.roles,
+              [Role.ADMIN],
+              <AlertDialog
+                onOpenChange={setDeleteRowDilog}
+                open={deleteRowDilog}
+              >
+                <AlertDialogTrigger asChild>
+                  {rowSelection && Object.keys(rowSelection).length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-7 gap-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Xoá tài khoản
+                      </span>
+                    </Button>
+                  )}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Bạn có chắc muốn xoá các tài khoản đã chọn?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Khi đồng ý sẽ xoá các tài khoản đã chọn trong bảng.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                    <AlertDialogAction onClick={rowDelete}>
+                      Đồng ý
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>,
+            )}
             <TableSearch
               columns={columns}
-              title="Tìm kiếm khoá học"
+              title="Tìm kiếm tài khoản"
               handled={handled}
               setHandled={setHandled}
               IdToColumn={IdToColumn}
-              source={'course'}
+              source={'users'}
               searchFields={['name', 'desc']}
             />
             <DropdownMenu>
@@ -919,33 +842,100 @@ export default function Course() {
                   <Button size="sm" className="h-7 gap-1">
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Thêm khoá học
+                      Thêm tài khoản
                     </span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <form
+                      onSubmit={form.handleSubmit(onSubmit)}
+                      className="grid gap-2"
+                    >
                       <DialogHeader>
-                        <DialogTitle>Thêm khoá học</DialogTitle>
+                        <DialogTitle>Thêm tài khoản</DialogTitle>
                         <DialogDescription>
-                          Thêm khoá học vào hệ thống các khoá học của trường
+                          Thêm tài khoản vào hệ thống các tài khoản của trường
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
-                        <div className="grid">
+                        <FormField
+                          control={form.control}
+                          name="fullname"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="text">Họ và tên</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Họ và tên"
+                                  type="text"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="email">Email</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="your.email@gmail.com"
+                                  type="text"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="roles"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="text">Quyền</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Chọn quyền" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {verifyRole(
+                                    user?.roles,
+                                    [Role.ADMIN],
+                                    <SelectItem value={Role.MANAGER}>
+                                      Quản lý
+                                    </SelectItem>,
+                                  )}
+                                  <SelectItem value={Role.USER}>
+                                    Người dùng
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
-                            name="name"
+                            name="phone"
                             render={({ field }) => (
-                              <FormItem className="grid">
-                                <FormLabel htmlFor="text">
-                                  Số của khoá học
-                                </FormLabel>
+                              <FormItem>
+                                <FormLabel htmlFor="password">SĐT</FormLabel>
                                 <FormControl>
                                   <Input
-                                    placeholder="Số của khoá học"
-                                    type="number"
+                                    type="text"
+                                    placeholder="SĐT"
                                     {...field}
                                   />
                                 </FormControl>
@@ -953,43 +943,77 @@ export default function Course() {
                               </FormItem>
                             )}
                           />
-                        </div>
-                        <div className="flex">
                           <FormField
                             control={form.control}
-                            name="is_graduate"
+                            name="gender"
                             render={({ field }) => (
-                              <FormItem className="flex items-center space-y-0 gap-3">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                                <FormLabel>Đã tốt nghiệp</FormLabel>
+                              <FormItem>
+                                <FormLabel htmlFor="text">Giới tính</FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Chọn giới tính" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value={GenderEnum.MALE}>
+                                      Nam
+                                    </SelectItem>
+                                    <SelectItem value={GenderEnum.FEMALE}>
+                                      Nữ
+                                    </SelectItem>
+                                    <SelectItem value={GenderEnum.OTHER}>
+                                      Khác
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                         </div>
-                        <div className="grid">
-                          <FormField
-                            control={form.control}
-                            name="desc"
-                            render={({ field }) => (
-                              <FormItem className="grid">
-                                <FormLabel htmlFor="text">Mô tả</FormLabel>
-                                <FormControl>
-                                  <Textarea placeholder="Mô tả" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        <FormField
+                          control={form.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="password">Mật khẩu</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="password"
+                                  placeholder="••••••••"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="confirm"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="password">Mật khẩu</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="password"
+                                  placeholder="••••••••"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                       <DialogFooter>
-                        <Button type="submit">Thêm</Button>
+                        <Button type="submit" className="w-full mt-2">
+                          Thêm tài khoản
+                        </Button>
                       </DialogFooter>
                     </form>
                   </Form>
@@ -1001,9 +1025,9 @@ export default function Course() {
         <TabsContent value="all">
           <Card x-chunk="dashboard-06-chunk-0">
             <CardHeader>
-              <CardTitle>Khoá học</CardTitle>
+              <CardTitle>Quản lý tài khoản</CardTitle>
               <CardDescription>
-                Danh sách và thông tin các khoá học
+                Danh sách và thông tin các tài khoản
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1042,7 +1066,7 @@ export default function Course() {
                 </TableHeader>
                 <TableBody>
                   {!isLoading ? (
-                    course?.length > 0 && table.getRowModel().rows?.length ? (
+                    users?.length > 0 && table.getRowModel().rows?.length ? (
                       table.getRowModel().rows.map((row) => (
                         <TableRow
                           key={row.id}
@@ -1074,48 +1098,10 @@ export default function Course() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                                {verifyRole(
-                                  user?.roles,
-                                  [Role.ADMIN, Role.MANAGER],
-                                  <>
-                                    <Dialog
-                                      open={openUpdateCourse}
-                                      onOpenChange={setOpenUpdateCourse}
-                                    >
-                                      <DialogTrigger asChild>
-                                        <Button
-                                          className={`w-full font-normal justify-start relative 
-                                        flex cursor-default select-none items-center 
-                                        rounded-sm px-2 py-1.5 text-sm outline-none 
-                                        transition-colors focus:bg-accent 
-                                        focus:text-accent-foreground 
-                                        data-[disabled]:pointer-events-none 
-                                        data-[disabled]:opacity-50`}
-                                          variant="ghost"
-                                        >
-                                          Cập nhật
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent className="sm:max-w-[425px]">
-                                        <UpdateForm
-                                          row={row}
-                                          course={course}
-                                          setCourse={setCourse}
-                                          setHandled={setHandled}
-                                          setOpenUpdateCourse={
-                                            setOpenUpdateCourse
-                                          }
-                                        />
-                                      </DialogContent>
-                                    </Dialog>
-                                    <DropdownMenuItem
-                                      onClick={() => deleteCourse(row)}
-                                    >
-                                      Xoá
-                                    </DropdownMenuItem>
-                                  </>,
-                                )}
-                                <Dialog>
+                                <Dialog
+                                  open={openUpdateUsers}
+                                  onOpenChange={setOpenUpdateUsers}
+                                >
                                   <DialogTrigger asChild>
                                     <Button
                                       className={`w-full font-normal justify-start relative 
@@ -1127,13 +1113,28 @@ export default function Course() {
                                         data-[disabled]:opacity-50`}
                                       variant="ghost"
                                     >
-                                      Xem
+                                      Cập nhật
                                     </Button>
                                   </DialogTrigger>
                                   <DialogContent className="sm:max-w-[425px]">
-                                    <ViewDetail id={row.original.id} />
+                                    <UpdateForm
+                                      row={row}
+                                      users={users}
+                                      setUsers={setUsers}
+                                      setHandled={setHandled}
+                                      setOpenUpdateUsers={setOpenUpdateUsers}
+                                    />
                                   </DialogContent>
                                 </Dialog>
+                                {verifyRole(
+                                  user?.roles,
+                                  [Role.ADMIN],
+                                  <DropdownMenuItem
+                                    onClick={() => deleteUsers(row)}
+                                  >
+                                    Xoá
+                                  </DropdownMenuItem>,
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -1146,7 +1147,7 @@ export default function Course() {
                           className="h-24 text-center"
                         >
                           <div className="py-4">
-                            <Empty desc="Không có khoá học nào" />
+                            <Empty desc="Không có tài khoản nào" />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1233,7 +1234,7 @@ export default function Course() {
                 Hiển thị{' '}
                 <strong>
                   {pageConfig ? (page === 1 ? 1 : 10 * (page - 1)) : 0} -{' '}
-                  {pageConfig ? 10 * (page - 1) + course.length : 0}
+                  {pageConfig ? 10 * (page - 1) + users.length : 0}
                 </strong>{' '}
                 trên <strong>{pageConfig ? pageConfig?.total : 0}</strong> khoá
                 học

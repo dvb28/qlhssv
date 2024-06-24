@@ -127,9 +127,16 @@ import {
   PaginationItem,
   PaginationLink,
 } from '@/components/ui/pagination';
-import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
+import {
+  errors,
+  getCommonPinningStyles,
+  verifyRole,
+} from '@/common/utils/ultils';
 import { PageConfig } from '@/common/types/page.config.type';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { Role } from '@/common/enum/role.enum';
+import Users from '@/common/interface/Users';
 
 // Form Student Info Schema
 const studentInfoSchema = z.object({
@@ -417,7 +424,6 @@ const UpdateForm: FC<UpdateFormType> = ({ row, spac, setSpac }) => {
 
             // Check upload
             if (upload?.ok && upload?.data?.length > 0) {
-
               // Fetch
               const updatedWithFile = await fetchUpdate({
                 ...values,
@@ -661,6 +667,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
   // Page
   const [page, setPage] = useState<number>(1);
 
+  // Users
+  const user: Users = useSession()?.data?.user as Users;
+
   // Open mul spac
   const [openMulSpac, setOpenMulSpac] = useState<boolean>(false);
 
@@ -799,6 +808,7 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       header: ({ table }) => (
         <div className="pr-2">
           <Checkbox
+            disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
             checked={
               table.getIsAllPageRowsSelected() ||
               (table.getIsSomePageRowsSelected() && 'indeterminate')
@@ -813,9 +823,10 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
       cell: ({ row }) => (
         <div className="pr-2">
           <Checkbox
+            aria-label="Select row"
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
           />
         </div>
       ),
@@ -1003,15 +1014,21 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                <UpdateForm
-                  row={row}
-                  spac={spac}
-                  setSpac={setSpac}
-                  studentData={studentData}
-                />
-                <DropdownMenuItem onClick={() => deleteSpac(row)}>
-                  Xoá
-                </DropdownMenuItem>
+                {verifyRole(
+                  user?.roles,
+                  [Role.ADMIN, Role.MANAGER],
+                  <>
+                    <UpdateForm
+                      row={row}
+                      spac={spac}
+                      setSpac={setSpac}
+                      studentData={studentData}
+                    />
+                    <DropdownMenuItem onClick={() => deleteSpac(row)}>
+                      Xoá
+                    </DropdownMenuItem>
+                  </>,
+                )}
                 <Link target="_blank" href={`${BASE_URL}/${row.original.file}`}>
                   <DropdownMenuItem>Xem</DropdownMenuItem>
                 </Link>
@@ -1469,19 +1486,23 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                   <h3 className="flex-1 shrink-0 whitespace-nowrap text-lg font-semibold tracking-tight sm:grow-0">
                     Thông tin chi tiết
                   </h3>
-                  <div className="hidden items-center gap-2 md:ml-auto md:flex">
-                    <Button
-                      size="sm"
-                      className="h-7 gap-1"
-                      type="submit"
-                      disabled={isLoading}
-                    >
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Cập nhật hồ sơ sinh viên
-                      </span>
-                    </Button>
-                  </div>
+                  {verifyRole(
+                    user?.roles,
+                    [Role.ADMIN, Role.MANAGER],
+                    <div className="hidden items-center gap-2 md:ml-auto md:flex">
+                      <Button
+                        size="sm"
+                        className="h-7 gap-1"
+                        type="submit"
+                        disabled={isLoading}
+                      >
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                          Cập nhật hồ sơ sinh viên
+                        </span>
+                      </Button>
+                    </div>,
+                  )}
                 </div>
                 <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
                   <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
@@ -1504,6 +1525,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Họ và tên</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="Họ và tên"
                                       type="text"
                                       {...field}
@@ -1522,6 +1550,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     Giới tính
                                   </FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                   >
@@ -1553,7 +1588,17 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                 <FormItem className="grid">
                                   <FormLabel>Nơi sinh</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Nơi sinh" {...field} />
+                                    <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
+                                      placeholder="Nơi sinh"
+                                      {...field}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1566,7 +1611,17 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                 <FormItem className="grid">
                                   <FormLabel>Tôn giáo</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Tôn giáo" {...field} />
+                                    <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
+                                      placeholder="Tôn giáo"
+                                      {...field}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1584,6 +1639,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     <PopoverTrigger asChild>
                                       <FormControl>
                                         <Button
+                                          disabled={
+                                            !verifyRole(
+                                              user?.roles,
+                                              [Role.ADMIN, Role.MANAGER],
+                                              true,
+                                            )
+                                          }
                                           variant={'outline'}
                                           className={cn(
                                             'w-full pl-3 text-left font-normal',
@@ -1635,6 +1697,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>CCCD</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="CCCD"
                                       type="text"
                                       {...field}
@@ -1652,6 +1721,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Quê quán</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="Quê quán"
                                       type="text"
                                       {...field}
@@ -1669,6 +1745,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Số điện thoại cá nhân</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="Số điện thoại cá nhân"
                                       type="text"
                                       {...field}
@@ -1688,6 +1771,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Email</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="sinhvien.email@gmail.com"
                                       type="text"
                                       {...field}
@@ -1706,6 +1796,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     Trạng thái
                                   </FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                   >
@@ -1746,6 +1843,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                 <FormItem className="grid">
                                   <FormLabel htmlFor="text">Quốc gia</FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={field?.value ?? ''}
                                   >
@@ -1776,6 +1880,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     Quốc tịch
                                   </FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                   >
@@ -1818,6 +1929,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                 <FormLabel>Họ và tên cha</FormLabel>
                                 <FormControl>
                                   <Input
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     placeholder="Họ và tên cha"
                                     type="text"
                                     {...field}
@@ -1837,6 +1955,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <PopoverTrigger asChild>
                                     <FormControl>
                                       <Button
+                                        disabled={
+                                          !verifyRole(
+                                            user?.roles,
+                                            [Role.ADMIN, Role.MANAGER],
+                                            true,
+                                          )
+                                        }
                                         variant={'outline'}
                                         className={cn(
                                           'w-full pl-3 text-left font-normal',
@@ -1883,6 +2008,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                 <FormLabel>Họ và tên mẹ</FormLabel>
                                 <FormControl>
                                   <Input
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     placeholder="Họ và tên mẹ"
                                     type="text"
                                     {...field}
@@ -1902,6 +2034,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <PopoverTrigger asChild>
                                     <FormControl>
                                       <Button
+                                        disabled={
+                                          !verifyRole(
+                                            user?.roles,
+                                            [Role.ADMIN, Role.MANAGER],
+                                            true,
+                                          )
+                                        }
                                         variant={'outline'}
                                         className={cn(
                                           'w-full pl-3 text-left font-normal',
@@ -1960,6 +2099,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     Xếp loại học tập
                                   </FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                   >
@@ -1993,6 +2139,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     Xếp loại hạnh kiểm
                                   </FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                   >
@@ -2028,6 +2181,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     Xếp loại tốt nghiệp
                                   </FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                   >
@@ -2060,6 +2220,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Năm tốt nghiệp</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       type="text"
                                       placeholder="Năm tốt nghiệp"
                                       {...field}
@@ -2091,6 +2258,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                               <FormItem className="grid">
                                 <FormLabel htmlFor="text">Hệ đào tạo</FormLabel>
                                 <Select
+                                  disabled={
+                                    !verifyRole(
+                                      user?.roles,
+                                      [Role.ADMIN, Role.MANAGER],
+                                      true,
+                                    )
+                                  }
                                   onValueChange={field.onChange}
                                   defaultValue={field.value}
                                 >
@@ -2121,6 +2295,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   Chuyên ngành chính
                                 </FormLabel>
                                 <Select
+                                  disabled={
+                                    !verifyRole(
+                                      user?.roles,
+                                      [Role.ADMIN, Role.MANAGER],
+                                      true,
+                                    )
+                                  }
                                   onValueChange={field.onChange}
                                   defaultValue={studentData.main_majors}
                                 >
@@ -2155,6 +2336,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   Chuyên ngành thứ 2
                                 </FormLabel>
                                 <Select
+                                  disabled={
+                                    !verifyRole(
+                                      user?.roles,
+                                      [Role.ADMIN, Role.MANAGER],
+                                      true,
+                                    )
+                                  }
                                   onValueChange={field.onChange}
                                   defaultValue={field.value}
                                 >
@@ -2187,6 +2375,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                               <FormItem className="grid">
                                 <FormLabel htmlFor="text">Lớp học</FormLabel>
                                 <Select
+                                  disabled={
+                                    !verifyRole(
+                                      user?.roles,
+                                      [Role.ADMIN, Role.MANAGER],
+                                      true,
+                                    )
+                                  }
                                   onValueChange={field.onChange}
                                   defaultValue={studentData.class_id ?? ''}
                                 >
@@ -2237,6 +2432,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Số báo danh</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="Số báo danh"
                                       {...field}
                                     />
@@ -2253,6 +2455,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Khối thi</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       type="text"
                                       placeholder="Khối thi"
                                       {...field}
@@ -2271,6 +2480,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     Ngành tuyển sinh
                                   </FormLabel>
                                   <Select
+                                    disabled={
+                                      !verifyRole(
+                                        user?.roles,
+                                        [Role.ADMIN, Role.MANAGER],
+                                        true,
+                                      )
+                                    }
                                     onValueChange={field.onChange}
                                     defaultValue={
                                       studentData.admissions_industry ?? ''
@@ -2309,6 +2525,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Khu vực</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       type="number"
                                       {...field}
                                       onChange={(e) =>
@@ -2329,6 +2552,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Lần thi</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="Lần thi"
                                       type="number"
                                       {...field}
@@ -2351,6 +2581,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Điểm môn 1</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       type="number"
                                       placeholder="Điểm môn 2"
                                       {...field}
@@ -2375,6 +2612,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Điểm môn 2</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       type="number"
                                       placeholder="Điểm môn 2"
                                       {...field}
@@ -2399,6 +2643,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Điểm môn 3</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       type="number"
                                       placeholder="Điểm môn 3"
                                       {...field}
@@ -2423,6 +2674,13 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                   <FormLabel>Điểm cộng</FormLabel>
                                   <FormControl>
                                     <Input
+                                      disabled={
+                                        !verifyRole(
+                                          user?.roles,
+                                          [Role.ADMIN, Role.MANAGER],
+                                          true,
+                                        )
+                                      }
                                       placeholder="Điểm cộng"
                                       type="number"
                                       {...field}
@@ -2449,9 +2707,9 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                                     <FormLabel>Điểm tổng</FormLabel>
                                     <FormControl>
                                       <Input
+                                        disabled
                                         placeholder="Điểm tổng"
                                         type="number"
-                                        disabled
                                         {...field}
                                         value={
                                           studentInfoForm.getValues()
@@ -2492,42 +2750,47 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                     </CardDescription>
                   </div>
                   <div className="flex gap-3">
-                    <AlertDialog
-                      onOpenChange={setDeleteRowDilog}
-                      open={deleteRowDilog}
-                    >
-                      <AlertDialogTrigger asChild>
-                        {rowSelection &&
-                          Object.keys(rowSelection).length > 0 && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="h-7 gap-1"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                                Xoá giấy tờ
-                              </span>
-                            </Button>
-                          )}
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Bạn có chắc muốn xoá các giấy tờ đã chọn?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Khi đồng ý sẽ xoá các giấy tờ đã chọn trong bảng.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Huỷ</AlertDialogCancel>
-                          <AlertDialogAction onClick={rowDelete}>
-                            Đồng ý
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {verifyRole(
+                      user?.roles,
+                      [Role.ADMIN, Role.MANAGER],
+                      <AlertDialog
+                        onOpenChange={setDeleteRowDilog}
+                        open={deleteRowDilog}
+                      >
+                        <AlertDialogTrigger asChild>
+                          {rowSelection &&
+                            Object.keys(rowSelection).length > 0 && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-7 gap-1"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                                  Xoá giấy tờ
+                                </span>
+                              </Button>
+                            )}
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Bạn có chắc muốn xoá các giấy tờ đã chọn?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Khi đồng ý sẽ xoá các giấy tờ đã chọn trong bảng.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                            <AlertDialogAction onClick={rowDelete}>
+                              Đồng ý
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>,
+                    )}
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -2563,242 +2826,285 @@ const StudentDetail: FC<Props> = ({ studentData }: Props) => {
                           })}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <Dialog open={open} onOpenChange={setOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 h-7"
-                        >
-                          <PlusCircle className="h-3.5 w-3.5" />
-                          Thêm chứng chỉ
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <Form {...spacForm}>
-                          <form onSubmit={spacForm.handleSubmit(onInsertSpac)}>
-                            <DialogHeader>
-                              <DialogTitle>Thêm chứng chỉ</DialogTitle>
-                              <DialogDescription>
-                                Thêm chứng chỉ vào danh sách giấy tờ nhập trường
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <div className="grid">
-                                <FormField
-                                  control={spacForm.control}
-                                  name="name"
-                                  render={({ field }) => (
-                                    <FormItem className="grid">
-                                      <FormLabel htmlFor="text">
-                                        Tên chứng chỉ
-                                      </FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Tên chứng chỉ"
-                                          type="text"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <div className="grid">
-                                <FormField
-                                  control={spacForm.control}
-                                  name="submit_note"
-                                  render={({ field }) => (
-                                    <FormItem className="grid">
-                                      <FormLabel htmlFor="text">
-                                        Ghi chú nộp
-                                      </FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          placeholder="Ghi chú nộp"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <div className="grid">
-                                <FormField
-                                  control={spacForm.control}
-                                  name="give_back_note"
-                                  render={({ field }) => (
-                                    <FormItem className="grid">
-                                      <FormLabel htmlFor="text">
-                                        Ghi chú trả
-                                      </FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          placeholder="Ghi chú trả"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <div className="grid">
-                                <FormField
-                                  control={spacForm.control}
-                                  name="give_back_date"
-                                  render={({ field }) => (
-                                    <FormItem className="grid">
-                                      <FormLabel>Ngày trả</FormLabel>
-                                      <Popover>
-                                        <PopoverTrigger asChild>
-                                          <FormControl>
-                                            <Button
-                                              variant={'outline'}
-                                              className={cn(
-                                                'w-full pl-3 text-left font-normal',
-                                                !field.value &&
-                                                  'text-muted-foreground',
-                                              )}
-                                            >
-                                              {field.value ? (
-                                                format(
-                                                  field.value,
-                                                  'dd/MM/yyyy',
-                                                )
-                                              ) : (
-                                                <span>Chọn ngày trả</span>
-                                              )}
-                                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                          </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent
-                                          className="w-auto p-0"
-                                          align="start"
-                                        >
-                                          <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            disabled={(date) =>
-                                              date > new Date() ||
-                                              date < new Date('1900-01-01')
-                                            }
-                                            initialFocus
-                                          />
-                                        </PopoverContent>
-                                      </Popover>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <div className="grid">
-                                <FormField
-                                  control={spacForm.control}
-                                  name="file"
-                                  render={({ field }) => (
-                                    <FormItem className="grid">
-                                      <FormLabel htmlFor="text">
-                                        Chọn file PDF
-                                      </FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="file"
-                                          accept="application/pdf"
-                                          placeholder="Chọn file PDF"
-                                          {...fileRef}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <div className="flex">
-                                <FormField
-                                  control={spacForm.control}
-                                  name="give_back"
-                                  render={({ field }) => (
-                                    <FormItem className="flex items-center space-y-0 gap-3">
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value}
-                                          onCheckedChange={field.onChange}
-                                        />
-                                      </FormControl>
-                                      <FormLabel>Đã trả lại</FormLabel>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <Button type="submit">Thêm</Button>
-                            </DialogFooter>
-                          </form>
-                        </Form>
-                      </DialogContent>
-                    </Dialog>
-                    <Dialog open={openMulSpac} onOpenChange={setOpenMulSpac}>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 h-7"
-                        >
-                          <PlusCircle className="h-3.5 w-3.5" />
-                          Thêm nhiều chứng chỉ
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <Form {...mulSpacForm}>
-                          <form
-                            onSubmit={mulSpacForm.handleSubmit(onInsertMulSpac)}
+                    {verifyRole(
+                      user?.roles,
+                      [Role.ADMIN, Role.MANAGER],
+                      <Dialog open={open} onOpenChange={setOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 h-7"
                           >
-                            <DialogHeader>
-                              <DialogTitle>Thêm các tệp chứng chỉ</DialogTitle>
-                              <DialogDescription>
-                                Thêm tệp chứng chỉ vào danh sách giấy tờ nhập
-                                trường
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <div className="grid">
-                                <FormField
-                                  control={mulSpacForm.control}
-                                  name="files"
-                                  render={({ field }) => (
-                                    <FormItem className="grid">
-                                      <FormLabel htmlFor="text">
-                                        Chọn các file PDF
-                                      </FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="file"
-                                          accept="application/pdf"
-                                          placeholder="Chọn file PDF"
-                                          {...filesRef}
-                                          multiple
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
+                            <PlusCircle className="h-3.5 w-3.5" />
+                            Thêm chứng chỉ
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <Form {...spacForm}>
+                            <form
+                              onSubmit={spacForm.handleSubmit(onInsertSpac)}
+                            >
+                              <DialogHeader>
+                                <DialogTitle>Thêm chứng chỉ</DialogTitle>
+                                <DialogDescription>
+                                  Thêm chứng chỉ vào danh sách giấy tờ nhập
+                                  trường
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="grid gap-4 py-4">
+                                <div className="grid">
+                                  <FormField
+                                    control={spacForm.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                      <FormItem className="grid">
+                                        <FormLabel htmlFor="text">
+                                          Tên chứng chỉ
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            disabled={
+                                              !verifyRole(
+                                                user?.roles,
+                                                [Role.ADMIN, Role.MANAGER],
+                                                true,
+                                              )
+                                            }
+                                            placeholder="Tên chứng chỉ"
+                                            type="text"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                                <div className="grid">
+                                  <FormField
+                                    control={spacForm.control}
+                                    name="submit_note"
+                                    render={({ field }) => (
+                                      <FormItem className="grid">
+                                        <FormLabel htmlFor="text">
+                                          Ghi chú nộp
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Textarea
+                                            placeholder="Ghi chú nộp"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                                <div className="grid">
+                                  <FormField
+                                    control={spacForm.control}
+                                    name="give_back_note"
+                                    render={({ field }) => (
+                                      <FormItem className="grid">
+                                        <FormLabel htmlFor="text">
+                                          Ghi chú trả
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Textarea
+                                            placeholder="Ghi chú trả"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                                <div className="grid">
+                                  <FormField
+                                    control={spacForm.control}
+                                    name="give_back_date"
+                                    render={({ field }) => (
+                                      <FormItem className="grid">
+                                        <FormLabel>Ngày trả</FormLabel>
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <FormControl>
+                                              <Button
+                                                disabled={
+                                                  !verifyRole(
+                                                    user?.roles,
+                                                    [Role.ADMIN, Role.MANAGER],
+                                                    true,
+                                                  )
+                                                }
+                                                variant={'outline'}
+                                                className={cn(
+                                                  'w-full pl-3 text-left font-normal',
+                                                  !field.value &&
+                                                    'text-muted-foreground',
+                                                )}
+                                              >
+                                                {field.value ? (
+                                                  format(
+                                                    field.value,
+                                                    'dd/MM/yyyy',
+                                                  )
+                                                ) : (
+                                                  <span>Chọn ngày trả</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                              </Button>
+                                            </FormControl>
+                                          </PopoverTrigger>
+                                          <PopoverContent
+                                            className="w-auto p-0"
+                                            align="start"
+                                          >
+                                            <Calendar
+                                              mode="single"
+                                              selected={field.value}
+                                              onSelect={field.onChange}
+                                              disabled={(date) =>
+                                                date > new Date() ||
+                                                date < new Date('1900-01-01')
+                                              }
+                                              initialFocus
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                                <div className="grid">
+                                  <FormField
+                                    control={spacForm.control}
+                                    name="file"
+                                    render={({ field }) => (
+                                      <FormItem className="grid">
+                                        <FormLabel htmlFor="text">
+                                          Chọn file PDF
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            disabled={
+                                              !verifyRole(
+                                                user?.roles,
+                                                [Role.ADMIN, Role.MANAGER],
+                                                true,
+                                              )
+                                            }
+                                            type="file"
+                                            accept="application/pdf"
+                                            placeholder="Chọn file PDF"
+                                            {...fileRef}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                                <div className="flex">
+                                  <FormField
+                                    control={spacForm.control}
+                                    name="give_back"
+                                    render={({ field }) => (
+                                      <FormItem className="flex items-center space-y-0 gap-3">
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                          />
+                                        </FormControl>
+                                        <FormLabel>Đã trả lại</FormLabel>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
                               </div>
-                            </div>
-                            <DialogFooter>
-                              <Button type="submit">Thêm</Button>
-                            </DialogFooter>
-                          </form>
-                        </Form>
-                      </DialogContent>
-                    </Dialog>
+                              <DialogFooter>
+                                <Button type="submit">Thêm</Button>
+                              </DialogFooter>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>,
+                    )}
+                    {verifyRole(
+                      user?.roles,
+                      [Role.ADMIN, Role.MANAGER],
+                      <Dialog open={openMulSpac} onOpenChange={setOpenMulSpac}>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 h-7"
+                          >
+                            <PlusCircle className="h-3.5 w-3.5" />
+                            Thêm nhiều chứng chỉ
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <Form {...mulSpacForm}>
+                            <form
+                              onSubmit={mulSpacForm.handleSubmit(
+                                onInsertMulSpac,
+                              )}
+                            >
+                              <DialogHeader>
+                                <DialogTitle>
+                                  Thêm các tệp chứng chỉ
+                                </DialogTitle>
+                                <DialogDescription>
+                                  Thêm tệp chứng chỉ vào danh sách giấy tờ nhập
+                                  trường
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="grid gap-4 py-4">
+                                <div className="grid">
+                                  <FormField
+                                    control={mulSpacForm.control}
+                                    name="files"
+                                    render={({ field }) => (
+                                      <FormItem className="grid">
+                                        <FormLabel htmlFor="text">
+                                          Chọn các file PDF
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            disabled={
+                                              !verifyRole(
+                                                user?.roles,
+                                                [Role.ADMIN, Role.MANAGER],
+                                                true,
+                                              )
+                                            }
+                                            type="file"
+                                            accept="application/pdf"
+                                            placeholder="Chọn file PDF"
+                                            {...filesRef}
+                                            multiple
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button type="submit">Thêm</Button>
+                              </DialogFooter>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>,
+                    )}
                   </div>
                 </div>
               </CardHeader>

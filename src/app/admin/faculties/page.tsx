@@ -718,12 +718,14 @@ export default function Faculties() {
             table.getIsAllPageRowsSelected() ||
             (table.getIsSomePageRowsSelected() && 'indeterminate')
           }
+          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
         />
       ),
       cell: ({ row }) => (
         <Checkbox
+          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Select row"
@@ -858,7 +860,7 @@ export default function Faculties() {
                 </Dialog>
                 {verifyRole(
                   user?.roles,
-                  Role.ADMIN,
+                  [Role.ADMIN],
                   <>
                     <Dialog>
                       <DialogTrigger asChild>
@@ -1020,92 +1022,90 @@ export default function Faculties() {
                 Xuất file Excel
               </span>
             </Button>
-            {
-              !verifyRole(
-                user?.roles,
-                Role.ADMIN,
-                <Dialog open={open} onOpenChange={setOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="h-7 gap-1">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Thêm khoa
-                      </span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)}>
-                        <DialogHeader>
-                          <DialogTitle>Thêm khoa</DialogTitle>
-                          <DialogDescription>
-                            Thêm khoa vào hệ thống các khoa của trường
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid">
-                            <FormField
-                              control={form.control}
-                              name="identifier_id"
-                              render={({ field }) => (
-                                <FormItem className="grid">
-                                  <FormLabel htmlFor="text">Mã khoa</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="Mã khoa"
-                                      type="text"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="grid">
-                            <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem className="grid">
-                                  <FormLabel htmlFor="text">Tên khoa</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="Tên khoa"
-                                      type="text"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="grid">
-                            <FormField
-                              control={form.control}
-                              name="desc"
-                              render={({ field }) => (
-                                <FormItem className="grid">
-                                  <FormLabel htmlFor="text">Mô tả</FormLabel>
-                                  <FormControl>
-                                    <Textarea placeholder="Mô tả" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+            {verifyRole(
+              user?.roles,
+              [Role.ADMIN],
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-7 gap-1">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Thêm khoa
+                    </span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                      <DialogHeader>
+                        <DialogTitle>Thêm khoa</DialogTitle>
+                        <DialogDescription>
+                          Thêm khoa vào hệ thống các khoa của trường
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="identifier_id"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Mã khoa</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Mã khoa"
+                                    type="text"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
-                        <DialogFooter>
-                          <Button type="submit">Thêm</Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>,
-              )
-            }
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Tên khoa</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Tên khoa"
+                                    type="text"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="desc"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Mô tả</FormLabel>
+                                <FormControl>
+                                  <Textarea placeholder="Mô tả" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="submit">Thêm</Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>,
+            )}
           </div>
         </div>
         <TabsContent value="all">

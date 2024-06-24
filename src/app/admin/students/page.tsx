@@ -77,7 +77,11 @@ import { GenderEnum, GenderToString } from '@/common/enum/gender.enum';
 import type Students from '@/common/interface/Students';
 import { StateToString, StudyStateEnum } from '@/common/enum/study.state.enum';
 import { NationEnum, NationToString } from '@/common/enum/nation.enum';
-import { errors, getCommonPinningStyles } from '@/common/utils/ultils';
+import {
+  errors,
+  getCommonPinningStyles,
+  verifyRole,
+} from '@/common/utils/ultils';
 import { Badge } from '@/components/ui/badge';
 import { RankEnum, RankToString } from '@/common/enum/rank.enum';
 import { PageConfig } from '@/common/types/page.config.type';
@@ -89,6 +93,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import Users from '@/common/interface/Users';
+import { useSession } from 'next-auth/react';
+import { Role } from '@/common/enum/role.enum';
 
 enum ApproveSearchEnum {
   BOTH = 'BOTH',
@@ -141,6 +148,9 @@ export default function Students() {
 
   // Page config
   const [pageConfig, setPageConfig] = useState<PageConfig | null>(null);
+
+  // User
+  const user: Users = useSession()?.data?.user as Users;
 
   // Dialog Open
   const [deleteRowDilog, setDeleteRowDilog] = useState<boolean>(false);
@@ -202,7 +212,7 @@ export default function Students() {
 
     // Toasts
     toast.promise(promise, {
-      loading: `Đang duyệt hồ sơ sinh viên ${row.original.fullname}, vui lòng đợi...`,
+      loading: `Đang duyệt hồ sơ hồ sơ sinh viên ${row.original.fullname}, vui lòng đợi...`,
       success: (data: Students) => {
         // Update data
         const updatedItems = students.map((item: Students, i: number) => {
@@ -220,7 +230,7 @@ export default function Students() {
         setStudents(updatedItems);
 
         // Show message
-        return `Duyệt hồ sơ sinh viên ${row.original.fullname} thành công`;
+        return `Duyệt hồ sơ hồ sơ sinh viên ${row.original.fullname} thành công`;
       },
       error: (message: string[]) => errors(toast, message),
     });
@@ -258,7 +268,7 @@ export default function Students() {
 
     // Toasts
     toast.promise(promise, {
-      loading: `Đang xóa sinh viên ${row.original.fullname}, vui lòng đợi...`,
+      loading: `Đang xóa hồ sơ sinh viên ${row.original.fullname}, vui lòng đợi...`,
       success: () => {
         // Check deletes length
         if (students.length === 1 && page !== 1) {
@@ -270,7 +280,7 @@ export default function Students() {
         }
 
         // Show message
-        return `Xóa sinh viên ${row.original.fullname} thành công`;
+        return `Xóa hồ sơ sinh viên ${row.original.fullname} thành công`;
       },
       error: (message: string[]) => errors(toast, message),
     });
@@ -342,7 +352,7 @@ export default function Students() {
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
-            Tên sinh viên
+            Tên hồ sơ sinh viên
             <CaretSortIcon className="ml-2 h-4 w-4" />
           </Button>
         );
@@ -676,9 +686,13 @@ export default function Students() {
                 >
                   <DropdownMenuItem>Xem</DropdownMenuItem>
                 </Link>
-                <DropdownMenuItem onClick={() => deleteStudents(row)}>
-                  Xoá
-                </DropdownMenuItem>
+                {verifyRole(
+                  user?.roles,
+                  [Role.ADMIN, Role.MANAGER],
+                  <DropdownMenuItem onClick={() => deleteStudents(row)}>
+                    Xoá
+                  </DropdownMenuItem>,
+                )}
                 {!row.original.approve && (
                   <DropdownMenuItem onClick={() => handleApprove(row)}>
                     Duyệt
@@ -783,8 +797,8 @@ export default function Students() {
 
       // Thêm dữ liệu từ JSON vào worksheet
       worksheet.columns = [
-        { header: 'Mã sinh viên', key: 'msv' },
-        { header: 'Tên sinh viên', key: 'fullname' },
+        { header: 'Mã hồ sơ sinh viên', key: 'msv' },
+        { header: 'Tên hồ sơ sinh viên', key: 'fullname' },
         { header: 'Địa chỉ Email', key: 'email' },
         { header: 'Căn cước công dân', key: 'cccd' },
         { header: 'Ngày sinh', key: 'date_of_birth' },
@@ -880,7 +894,7 @@ export default function Students() {
 
     // Toasts
     toast.promise(promise, {
-      loading: 'Đang xóa các sinh viên, vui lòng đợi...',
+      loading: 'Đang xóa các hồ sơ sinh viên, vui lòng đợi...',
       success: () => {
         // Reset selection
         setRowSelection({});
@@ -895,7 +909,7 @@ export default function Students() {
         }
 
         // Show message
-        return 'Xóa các sinh viên đã chọn thành công';
+        return 'Xóa các hồ sơ sinh viên đã chọn thành công';
       },
       error: (message: string[]) => errors(toast, message),
     });
@@ -922,7 +936,7 @@ export default function Students() {
                   <Button size="sm" variant="destructive" className="h-7 gap-1">
                     <Trash2 className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Xoá sinh viên
+                      Xoá hồ sơ sinh viên
                     </span>
                   </Button>
                 )}
@@ -930,10 +944,10 @@ export default function Students() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    Bạn có chắc muốn xoá các sinh viên đã chọn?
+                    Bạn có chắc muốn xoá các hồ sơ sinh viên đã chọn?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Khi đồng ý sẽ xoá các sinh viên đã chọn trong bảng.
+                    Khi đồng ý sẽ xoá các hồ sơ sinh viên đã chọn trong bảng.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -1004,23 +1018,27 @@ export default function Students() {
                 Xuất file Excel
               </span>
             </Button>
-            <Link href="/admin/students/student-add">
-              <Button size="sm" className="h-7 gap-1">
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Thêm sinh viên
-                </span>
-              </Button>
-            </Link>
+            {verifyRole(
+              user?.roles,
+              [Role.ADMIN, Role.MANAGER],
+              <Link href="/admin/students/student-add">
+                <Button size="sm" className="h-7 gap-1">
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Thêm hồ sơ sinh viên
+                  </span>
+                </Button>
+              </Link>,
+            )}
           </div>
         </div>
         <TabsContent value="all">
           <Card x-chunk="dashboard-06-chunk-0">
             <div className="flex justify-between">
               <CardHeader>
-                <CardTitle>Sinh viên</CardTitle>
+                <CardTitle>Hồ sơ sinh viên</CardTitle>
                 <CardDescription>
-                  Danh sách và thông tin các sinh viên
+                  Danh sách và thông tin các hồ sơ sinh viên
                 </CardDescription>
               </CardHeader>
               <div className="flex w-full max-w-sm items-center justify-end gap-1.5 mr-[20px]">
@@ -1129,7 +1147,7 @@ export default function Students() {
                           className="h-24 text-center"
                         >
                           <div className="py-4">
-                            <Empty desc="Không có sinh viên nào" />
+                            <Empty desc="Không có hồ sơ sinh viên nào" />
                           </div>
                         </TableCell>
                       </TableRow>

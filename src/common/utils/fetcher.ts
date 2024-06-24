@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { getSession, signOut } from 'next-auth/react';
 
 // API Host
@@ -6,6 +6,10 @@ const host = 'localhost';
 
 // Server Port
 const port = '8080';
+
+const localtion = (path: string) => {
+  window.location.href = path;
+} 
 
 // BASE_URL
 export const BASE_URL = `http://${host}:${port}`;
@@ -31,11 +35,31 @@ api.interceptors.request.use(async (config) => {
 
     // Add roles to header
     config.headers['roles'] = `${session.user?.roles}`;
-
   }
   // Return
   return config;
 });
+
+// Errors
+const errorsHandle = (error: AxiosError) => {
+  // Check status
+  if (error?.response?.status) {
+    // Sign out
+    switch (error.response.status) {
+      case 500:
+        localtion('/errors/500');
+        break;
+      case 403:
+        localtion('/errors/403');
+        break;
+    }
+  } else {
+    switch (error.code) {
+      default:
+        localtion('/errors/500');
+    }
+  }
+};
 
 // Fetching
 const fetching = async (response: AxiosResponse) => {
@@ -48,7 +72,7 @@ const fetching = async (response: AxiosResponse) => {
   // Unthorized
   if (status === 401) {
     // Sight out
-    signOut({ callbackUrl: '/auth/login'});
+    signOut({ callbackUrl: '/auth/login' });
   }
 
   // Fetch response data
@@ -64,7 +88,13 @@ const POST = async (url: string, data: any) => {
   const response: AxiosResponse = await api
     .post(url, data)
     .then((res) => res)
-    .catch((err) => err.response);
+    .catch((err) => {
+      // Error
+      errorsHandle(err);
+
+      // Return error
+      return err.response;
+    });
 
   // Return Fetching
   return fetching(response);
@@ -75,7 +105,13 @@ const PUT = async (url: string, data: any) => {
   const response: AxiosResponse = await api
     .put(url, data)
     .then((res) => res)
-    .catch((err) => err.response);
+    .catch((err) => {
+      // Error
+      errorsHandle(err);
+
+      // Return error
+      return err.response;
+    });
 
   // Return Fetching
   return fetching(response);
@@ -91,7 +127,13 @@ const UPLOAD = async (url: string, payload: FormData) => {
       },
     })
     .then((res) => res)
-    .catch((err) => err.response);
+    .catch((err) => {
+      // Error
+      errorsHandle(err);
+
+      // Return error
+      return err.response;
+    });
 
   // Return Fetching
   return fetching(response);
@@ -106,7 +148,13 @@ export const GET = async (
   const response: AxiosResponse = await api
     .get(url, { params })
     .then((res) => res)
-    .catch((err) => err.response);
+    .catch((err) => {
+      // Error
+      errorsHandle(err);
+
+      // Return error
+      return err.response;
+    });
 
   // Return Fetching
   return fetching(response);
@@ -121,7 +169,13 @@ const DELETE = async (
   const response: AxiosResponse = await api
     .delete(url, { params })
     .then((res) => res)
-    .catch((err) => err.response);
+    .catch((err) => {
+      // Error
+      errorsHandle(err);
+
+      // Return error
+      return err.response;
+    });
 
   // Return Fetching
   return fetching(response);

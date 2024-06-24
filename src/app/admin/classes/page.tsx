@@ -107,9 +107,13 @@ import Course from '@/common/interface/Course';
 import { Separator } from '@radix-ui/react-dropdown-menu';
 import { ClassDetail } from '@/common/types/class/detail';
 import { PageConfig } from '@/common/types/page.config.type';
-import { errors } from '@/common/utils/ultils';
+import { errors, verifyRole } from '@/common/utils/ultils';
 import TableSearch from '@/components/custom/table.search';
+import { Role } from '@/common/enum/role.enum';
+import Users from '@/common/interface/Users';
+import { useSession } from 'next-auth/react';
 
+// Hàm chuyển đổi từ viết tắt của cột thành tiếng việt
 const IdToColumn = (key: string) => {
   switch (key) {
     case 'identifier_id':
@@ -129,152 +133,7 @@ const IdToColumn = (key: string) => {
   }
 };
 
-const columns: ColumnDef<Class>[] = [
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: 'identifier_id',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Mã lớp học
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div className="">{row.getValue('identifier_id')}</div>,
-  },
-  {
-    accessorKey: 'course_name',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Thuộc khoá học
-        <CaretSortIcon className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      // Return
-      return <div className="">{row.original.course?.name}</div>;
-    },
-  },
-  {
-    accessorKey: 'faculty_name',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Thuộc khoa
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div className="">{row.original.faculty?.name}</div>,
-  },
-  {
-    accessorKey: 'name',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Tên lớp
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div className="">{row.getValue('name')}</div>,
-  },
-  {
-    accessorKey: 'desc',
-    header: () => (
-      <Button className="w-full" variant="ghost">
-        <div className="flex justify-start flex-1 w-100">
-          <p>Mô tả</p>
-        </div>
-      </Button>
-    ),
-    cell: ({ row }) => {
-      // Des
-      const desc: string = row.getValue('desc');
-
-      // Return
-      return (
-        <div className="text-left">
-          {desc?.trim() !== '' ? desc : 'Không có mô tả nào cho lớp học'}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'created_at',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Ngày tạo
-        <CaretSortIcon className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      return (
-        <div className="text-left">
-          {format(row.getValue('created_at'), 'dd/MM/yyyy')}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'updated_at',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Ngày cập nhật gần nhất
-        <CaretSortIcon className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      return (
-        <div className="text-left">
-          {format(row.getValue('updated_at'), 'dd/MM/yyyy')}
-        </div>
-      );
-    },
-  },
-];
-
-// Validate Schema
+// Xác thực, kiểm tra dữ liệu
 const classSchema = z.object({
   name: z.string({ required_error: 'Trường này không được trống' }).min(1, {
     message: 'Tên lớp học là bắt buộc',
@@ -295,7 +154,7 @@ const classSchema = z.object({
     }),
 });
 
-
+// Tạo kiểu dữ liệu UpdateFormType
 type UpdateFormType = {
   row: Row<Class>;
   classess: Class[];
@@ -306,6 +165,7 @@ type UpdateFormType = {
   setClassess: React.Dispatch<React.SetStateAction<Class[]>>;
 };
 
+// Component để cập nhật thông tin của lớp
 const UpdateForm: FC<UpdateFormType> = ({
   row,
   classess,
@@ -315,7 +175,7 @@ const UpdateForm: FC<UpdateFormType> = ({
   setClassess,
   setOpenUpdateClass,
 }) => {
-  // Form update classess
+  // Tạo các thể hiện và các giá trị mặc định cho các input
   const formUpdate = useForm<z.infer<typeof classSchema>>({
     resolver: zodResolver(classSchema),
     defaultValues: {
@@ -331,21 +191,21 @@ const UpdateForm: FC<UpdateFormType> = ({
     },
   });
 
-  // Update
+  // Hamd thực hiện logic cập nhật thông tin lớp
   function onUpdate(values: z.infer<typeof classSchema>) {
-    // Destructuring data
+    // Lấy ra biến từ trong object values
     const { faculty_id, course_id, ...vals } = values;
 
-    // Faculty data
+    // Chuyển đổi chuỗi json thành dữ liệu dạng object
     const faculty = JSON.parse(faculty_id);
 
-    // Course data
+    // Chuyển đổi chuỗi json thành dữ liệu dạng object
     const course = JSON.parse(course_id);
 
-    // Close dialog
+    // Đóng hộp thoại cập nhật thông tin lớp
     setOpenUpdateClass(false);
 
-    // Promise
+    // Hàm thực hiện logic chính
     const promise = (): Promise<Class> =>
       new Promise(async (resolve, reject) =>
         setTimeout(async () => {
@@ -373,11 +233,12 @@ const UpdateForm: FC<UpdateFormType> = ({
         }, 1000),
       );
 
-    // Toast
+    // Xử lý thông báo kết quả ra màn hình sau khi cập nhật
     toast.promise(promise, {
       loading: 'Đang cập nhật thông tin lớp học, vui lòng đợi...',
+      // Xử lý khi cập nhật thành công
       success: (data: Class) => {
-        // Update data
+        // Cập nhật lớp
         const updatedItems = classess.map((item: Class, i: number) => {
           // Check row index
           if (i === row.index) return data;
@@ -392,17 +253,19 @@ const UpdateForm: FC<UpdateFormType> = ({
         // Set data
         setClassess(updatedItems);
 
-        // Show message
+        // Trả về thông báo thành công
         return 'Cập nhật thông tin lớp học thành công';
       },
+      // Xuất ra lỗi
       error: (message: string[]) => errors(toast, message),
       finally: () => {
-        // Reset form value
+        // Reset giá trị của các input đã nhập
         formUpdate.reset();
       },
     });
   }
 
+  // Return
   return (
     <Form {...formUpdate}>
       <form onSubmit={formUpdate.handleSubmit(onUpdate)}>
@@ -519,18 +382,20 @@ const UpdateForm: FC<UpdateFormType> = ({
   );
 };
 
+// Tạo kiểu dữ liệu ViewDetailType
 type ViewDetailType = {
   id: string;
 };
 
+// Compoent ViewDetail để hiển thị ra thông tin chi tiết thống kê của lớp
 const ViewDetail: FC<ViewDetailType> = ({ id }) => {
-  // Faculty detail
+  // State (kho) để chứa dữ liệu chi tiết
   const [detail, setDetail] = useState<ClassDetail | null>(null);
 
-  // Loading
+  // State (kho) để thể hiện trạng thái loading
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Effect load detail
+  // Use Effect để lấy ra các thông tin thống kê
   useEffect(() => {
     (async () => {
       // Fetch
@@ -540,12 +405,12 @@ const ViewDetail: FC<ViewDetailType> = ({ id }) => {
         payload: { id },
       });
 
-      // Delay
+      // Chờ khoảng 1 giây mới chạy hàm bên trong
       setTimeout(() => {
-        // Disable loading
+        // Tắt chê độ loading
         setIsLoading(false);
 
-        // Check sussess
+        // Kiểm tra và lưu dữ liệu vào state detail đã tạo trước đó
         if (loaded?.ok) setDetail(loaded?.data);
       }, 1000);
     })();
@@ -656,7 +521,7 @@ const ViewDetail: FC<ViewDetailType> = ({ id }) => {
 };
 
 export default function Classess() {
-  // Form
+  // Tạo các thể hiện và các giá trị mặc định cho các input
   const form = useForm<z.infer<typeof classSchema>>({
     resolver: zodResolver(classSchema),
     defaultValues: {
@@ -666,16 +531,19 @@ export default function Classess() {
     },
   });
 
-  // Page
+  // State (kho) để lưu trữ trang dữ liệu hiện tại
   const [page, setPage] = useState<number>(1);
 
-  // Page config
+  // User
+  const user: Users = useSession()?.data?.user as Users;
+
+  //  State (kho) để lưu trữ cấu hình trang dữ liệu
   const [pageConfig, setPageConfig] = useState<PageConfig | null>(null);
 
-  // Faculty select data
+  // Khoa
   const [facultySelect, setFacultySelect] = useState<Faculty[]>([]);
 
-  // Course select data
+  // Khoá học
   const [courseSelect, setCourseSelect] = useState<Course[]>([]);
 
   // Handled
@@ -710,6 +578,156 @@ export default function Classess() {
 
   // Table Selection
   const [rowSelection, setRowSelection] = useState({});
+
+  // Cấu hình các cột dữ liệu của bảng
+  const columns: ColumnDef<Class>[] = [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          disabled={!verifyRole(user?.roles, [Role.ADMIN, Role.MANAGER], true)}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: 'identifier_id',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Mã lớp học
+            <CaretSortIcon className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="">{row.getValue('identifier_id')}</div>
+      ),
+    },
+    {
+      accessorKey: 'course_name',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Thuộc khoá học
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        // Return
+        return <div className="">{row.original.course?.name}</div>;
+      },
+    },
+    {
+      accessorKey: 'faculty_name',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Thuộc khoa
+            <CaretSortIcon className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => <div className="">{row.original.faculty?.name}</div>,
+    },
+    {
+      accessorKey: 'name',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Tên lớp
+            <CaretSortIcon className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => <div className="">{row.getValue('name')}</div>,
+    },
+    {
+      accessorKey: 'desc',
+      header: () => (
+        <Button className="w-full" variant="ghost">
+          <div className="flex justify-start flex-1 w-100">
+            <p>Mô tả</p>
+          </div>
+        </Button>
+      ),
+      cell: ({ row }) => {
+        // Des
+        const desc: string = row.getValue('desc');
+
+        // Return
+        return (
+          <div className="text-left">
+            {desc?.trim() !== '' ? desc : 'Không có mô tả nào cho lớp học'}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'created_at',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Ngày tạo
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-left">
+            {format(row.getValue('created_at'), 'dd/MM/yyyy')}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'updated_at',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Ngày cập nhật gần nhất
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        return (
+          <div className="text-left">
+            {format(row.getValue('updated_at'), 'dd/MM/yyyy')}
+          </div>
+        );
+      },
+    },
+  ];
 
   // Table
   const table = useReactTable({
@@ -1098,150 +1116,156 @@ export default function Classess() {
                 Xuất file Excel
               </span>
             </Button>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-7 gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Thêm lớp học
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <DialogHeader>
-                      <DialogTitle>Thêm lớp học</DialogTitle>
-                      <DialogDescription>
-                        Thêm lớp học vào hệ thống của trường
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="identifier_id"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Mã lớp học</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Mã lớp học"
-                                  type="text"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="course_id"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Khoá học</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
+            {verifyRole(
+              user?.roles,
+              [Role.ADMIN, Role.MANAGER],
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-7 gap-1">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Thêm lớp học
+                    </span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                      <DialogHeader>
+                        <DialogTitle>Thêm lớp học</DialogTitle>
+                        <DialogDescription>
+                          Thêm lớp học vào hệ thống của trường
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="identifier_id"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Mã lớp học</FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Chọn khoá học" />
-                                  </SelectTrigger>
+                                  <Input
+                                    placeholder="Mã lớp học"
+                                    type="text"
+                                    {...field}
+                                  />
                                 </FormControl>
-                                <SelectContent>
-                                  {courseSelect.map((item: Course) => (
-                                    <SelectItem
-                                      key={item.id}
-                                      value={JSON.stringify(item)}
-                                    >
-                                      {item.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="faculty_id"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Khoa</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="course_id"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Khoá học</FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Chọn khoá học" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {courseSelect.map((item: Course) => (
+                                      <SelectItem
+                                        key={item.id}
+                                        value={JSON.stringify(item)}
+                                      >
+                                        {item.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="faculty_id"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Khoa</FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Chọn khoa" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {facultySelect.map((item: Faculty) => (
+                                      <SelectItem
+                                        key={item.id}
+                                        value={JSON.stringify(item)}
+                                      >
+                                        {item.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">
+                                  Tên lớp học
+                                </FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Chọn khoa" />
-                                  </SelectTrigger>
+                                  <Input
+                                    placeholder="Tên lớp học"
+                                    type="text"
+                                    {...field}
+                                  />
                                 </FormControl>
-                                <SelectContent>
-                                  {facultySelect.map((item: Faculty) => (
-                                    <SelectItem
-                                      key={item.id}
-                                      value={JSON.stringify(item)}
-                                    >
-                                      {item.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid">
+                          <FormField
+                            control={form.control}
+                            name="desc"
+                            render={({ field }) => (
+                              <FormItem className="grid">
+                                <FormLabel htmlFor="text">Mô tả</FormLabel>
+                                <FormControl>
+                                  <Textarea placeholder="Mô tả" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Tên lớp học</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Tên lớp học"
-                                  type="text"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid">
-                        <FormField
-                          control={form.control}
-                          name="desc"
-                          render={({ field }) => (
-                            <FormItem className="grid">
-                              <FormLabel htmlFor="text">Mô tả</FormLabel>
-                              <FormControl>
-                                <Textarea placeholder="Mô tả" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit">Thêm</Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+                      <DialogFooter>
+                        <Button type="submit">Thêm</Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>,
+            )}
           </div>
         </div>
         <TabsContent value="all">
@@ -1320,36 +1344,49 @@ export default function Classess() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                                <Dialog
-                                  open={openUpdateClass}
-                                  onOpenChange={setOpenUpdateClass}
-                                >
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      className={`w-full font-normal justify-start relative 
+                                {verifyRole(
+                                  user?.roles,
+                                  [Role.ADMIN, Role.MANAGER],
+                                  <>
+                                    <Dialog
+                                      open={openUpdateClass}
+                                      onOpenChange={setOpenUpdateClass}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          className={`w-full font-normal justify-start relative 
                                         flex cursor-default select-none items-center 
                                         rounded-sm px-2 py-1.5 text-sm outline-none 
                                         transition-colors focus:bg-accent 
                                         focus:text-accent-foreground 
                                         data-[disabled]:pointer-events-none 
                                         data-[disabled]:opacity-50`}
-                                      variant="ghost"
+                                          variant="ghost"
+                                        >
+                                          Cập nhật
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-[425px]">
+                                        <UpdateForm
+                                          row={row}
+                                          setHandled={setHandled}
+                                          facultySelect={facultySelect}
+                                          courseSelect={courseSelect}
+                                          classess={classess}
+                                          setClassess={setClassess}
+                                          setOpenUpdateClass={
+                                            setOpenUpdateClass
+                                          }
+                                        />
+                                      </DialogContent>
+                                    </Dialog>
+                                    <DropdownMenuItem
+                                      onClick={() => deleteClass(row)}
                                     >
-                                      Cập nhật
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-[425px]">
-                                    <UpdateForm
-                                      row={row}
-                                      setHandled={setHandled}
-                                      facultySelect={facultySelect}
-                                      courseSelect={courseSelect}
-                                      classess={classess}
-                                      setClassess={setClassess}
-                                      setOpenUpdateClass={setOpenUpdateClass}
-                                    />
-                                  </DialogContent>
-                                </Dialog>
+                                      Xoá
+                                    </DropdownMenuItem>
+                                  </>,
+                                )}
                                 <Dialog>
                                   <DialogTrigger asChild>
                                     <Button
@@ -1369,11 +1406,6 @@ export default function Classess() {
                                     <ViewDetail id={row.original.id} />
                                   </DialogContent>
                                 </Dialog>
-                                <DropdownMenuItem
-                                  onClick={() => deleteClass(row)}
-                                >
-                                  Xoá
-                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
